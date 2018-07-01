@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Basic example</title>
+    <style>
+        #localVideo {
+            border: 1px solid red;
+        }
+        
+        #remoteVideo {
+            border: 1px solid blue;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="localVideo" muted="true"></video>
+    <video id="remoteVideo"></video>
+    <input id="currentUsernameInput" />
+    <input id="currentEmailInput" />
+    <button id="loginButton">Log in</button>
+
+    <button id="newSessionButton">New session</button>
+    <input id="sessionIdInput" />
+    <button id="joinSessionButton">Join session</button>
+</body>
+<script src="../dist/tbrtc.js"></script>
+
+</html>

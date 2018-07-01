@@ -1,0 +1,12 @@
+{
+    "The given constraint {cname} is not available on your device": "Podane ograniczenie {cname} nie jest dostępne na Twoim urządzeniu",
+    "You have problems with browser compatibility": "Masz problemy z kompatybilnością urządzenia",
+    "Your browser should be compatible with these: {browsers}": "Twoja przeglądarka powinna być kompatybilna z następującymi: {browsers}",
+    "Track {index} of type {kind} does not exist": "Ścieżka {index} typy {kind} nie istnieje",
+    "You need safe HTTPS protocols to read label of this device": "Potrzebujesz bezpiecznego protokołu HTTPS, aby przeczytać tę etykietę",
+    "Label of device {device} is unavailable for now. Please request for user media first.": "Etykieta urządzenia {device} jest w tym momencie niedostępna. Proszę wywołać najpierw funkcję getUserMedia().",
+    "The functionality {fname} is not supported by your browser": "Funkcjonalność {fname} nie jest wspierana przez Twoją przeglądarkę",
+    "User {luser} does not have peer connection to user with id {ruser}": "Użytkownik {luser} nie ma połączenia z użytkownikiem o identyfikatorze {ruser}",
+    "Remote user {ruser} is already connected to {luser}": "Zdalny użytkownik {ruser} jest już połączony z {luser}",
+    "DOM element {delem} is not found": "Element DOM {delem} nie został znaleziony"
+}
