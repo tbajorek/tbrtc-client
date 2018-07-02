@@ -19,12 +19,12 @@ class MultiConnection extends ClassWithEvents {
      * 
      * @param {object} peerConfig 
      * @param {string} sessionId 
-     * @param {UserModel} currentUser 
-     * @param {Stream} currentStream 
+     * @param {UserModel} localUser 
+     * @param {Stream} localStream 
      */
-    constructor(peerConfig, sessionId, currentUser, currentStream) {
+    constructor(peerConfig, sessionId, localUser, localStream) {
         super();
-        ValueChecker.check({ peerConfig, sessionId, currentUser, currentStream }, {
+        ValueChecker.check({ peerConfig, sessionId, localUser, localStream }, {
             "peerConfig": {
                 "required": true,
                 "typeof": 'object'
@@ -33,12 +33,12 @@ class MultiConnection extends ClassWithEvents {
                 "required": true,
                 "typeof": 'string'
             },
-            "currentUser": {
+            "localUser": {
                 "required": true,
                 "typeof": 'object',
                 "instanceof": User
             },
-            "currentStream": {
+            "localStream": {
                 "required": true,
                 "typeof": 'object',
                 "instanceof": Stream
@@ -46,8 +46,8 @@ class MultiConnection extends ClassWithEvents {
         });
         this._peerConfig = peerConfig;
         this._sessionId = sessionId;
-        this._currentUser = currentUser;
-        this._currentStream = currentStream;
+        this._localUser = localUser;
+        this._localStream = localStream;
         this._connections = {};
         this._offerOptions = null;
     }
@@ -61,15 +61,16 @@ class MultiConnection extends ClassWithEvents {
     getConnection(remoteUserId) {
         const connection = this._connections[remoteUserId];
         if (connection === null) {
-            throw new PeerConnNotFound(this.currentUser.name, userId);
+            throw new PeerConnNotFound(this.localUser.name, userId);
         }
         return connection;
     }
 
     /**
+     * Adding event handlers to this multi connection. Events are the same like in {@link PeerConnection} class.
      * 
-     * @param {string} eventName 
-     * @param {function} handler 
+     * @param {string} eventName Name of event for which is adding the handler
+     * @param {function} handler Handler for event
      */
     on(eventName, handler) {
         super.on(eventName, handler);
@@ -80,18 +81,28 @@ class MultiConnection extends ClassWithEvents {
         });
     }
 
+    /**
+     * It creates an offer to start connection with all remote users
+     * 
+     * @param {object} offerOptions Options of offer
+     */
     createOffer(offerOptions = {}) {
         this.connectionsArray.forEach(connection => connection.createOffer(offerOptions));
         this._offerOptions = offerOptions;
     }
 
+    /**
+     * It closes all peer connections
+     */
     close() {
         this.connectionsArray.forEach(connection => connection.close());
     }
 
     /**
+     * It adds new remote user
      * 
-     * @param {UserModel} remoteUser 
+     * @param {UserModel} remoteUser Model of remote user
+     * @throws {RemoteUserExists} It's thrown when user with the same username is already added
      */
     addConnection(remoteUser) {
         ValueChecker.check({ remoteUser }, {
@@ -102,13 +113,13 @@ class MultiConnection extends ClassWithEvents {
             }
         });
         if (this._connections[remoteUser.id] !== null) {
-            throw new RemoteUserExists(this._currentUser.name, remoteUser.name);
+            throw new RemoteUserExists(this._localUser.name, remoteUser.name);
         }
         this._connections[remoteUser.id] = new MultiConnection.SinglePeerAdapter(
             this._peerConfig,
-            this._currentUser,
+            this._localUser,
             remoteUser,
-            this._currentStream
+            this._localStream
         );
         this._connections[remoteUser.id]._events = this.events;
         if (this._offerOptions !== null) {
@@ -117,17 +128,19 @@ class MultiConnection extends ClassWithEvents {
     }
 
     /**
+     * It adds new local stream
      * 
-     * @param {Stream} localStream 
+     * @param {Stream} localStream Object of local stream
      */
     addLocalStream(localStream) {
         this.connectionsArray.forEach(connection => connection.addLocalStream(localStream));
     }
 
     /**
+     * It sets session description from remote user
      * 
-     * @param {Sdp} sdp 
-     * @param {string} remoteUserId 
+     * @param {Sdp} sdp SDP data from remote user
+     * @param {string} remoteUserId Identifier of remote user
      */
     setRemoteDescription(sdp, remoteUserId) {
         const connection = this.getConnection(remoteUserId);
@@ -135,9 +148,10 @@ class MultiConnection extends ClassWithEvents {
     }
 
     /**
+     * It adds ICE candidate data from remote user
      * 
-     * @param {IceCandidate} ice 
-     * @param {string} remoteUserId 
+     * @param {IceCandidate} ice Object with ICE candidate data from remote user
+     * @param {string} remoteUserId Identifier of remote user
      */
     addIceCandidate(ice, remoteUserId) {
         const connection = this.getConnection(remoteUserId);
@@ -145,6 +159,9 @@ class MultiConnection extends ClassWithEvents {
     }
 
     /**
+     * List of all peer connections. it's an object where keys are user ids and values are peer connections.
+     * 
+     * @readonly 
      * @returns {object}
      */
     get connections() {
@@ -152,20 +169,29 @@ class MultiConnection extends ClassWithEvents {
     }
 
     /**
+     * Model of local user
+     * 
+     * @readonly 
      * @returns {UserModel}
      */
-    get currentUser() {
-        return this._currentUser;
+    get localUser() {
+        return this._localUser;
     }
 
     /**
+     * Local stream object
+     * 
+     * @readonly 
      * @returns {Stream}
      */
-    get currentStream() {
-        return this._currentStream;
+    get localStream() {
+        return this._localStream;
     }
 
     /**
+     * Session identifier
+     * 
+     * @readonly 
      * @returns {string}
      */
     get sessionId() {
@@ -173,6 +199,7 @@ class MultiConnection extends ClassWithEvents {
     }
 
     /**
+     * Array of peer connections
      * @returns {PeerConnection[]}
      */
     get connectionsArray() {
@@ -180,6 +207,9 @@ class MultiConnection extends ClassWithEvents {
     }
 }
 
+/**
+ * As default peer connection adapter is chosen {@link PeerConnection} class
+ */
 MultiConnection.SinglePeerAdapter = PeerConnection;
 
 export default MultiConnection;

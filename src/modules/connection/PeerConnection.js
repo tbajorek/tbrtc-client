@@ -8,11 +8,12 @@ import Stream from '../media/Stream';
 
 class PeerConnection extends ClassWithEvents {
     /**
+     * Initialization of single peer connection
      * 
-     * @param {object} peerConfig 
-     * @param {User} localUser 
-     * @param {User} remoteUser 
-     * @param {Stream} localStream 
+     * @param {object} peerConfig Options of RTCPeerConnection
+     * @param {User} localUser  Model of local user
+     * @param {User} remoteUser Model of remote user
+     * @param {Stream} localStream Object of local stream
      */
     constructor(peerConfig, localUser, remoteUser, localStream) {
         ValueChecker.check({ peerConfig, remoteUser, localStream }, {
@@ -39,6 +40,7 @@ class PeerConnection extends ClassWithEvents {
         super();
         this._localStream = localStream;
         this._localDescription = null;
+        this._remoteDescription = null;
         this._localUser = localUser;
         this._remoteUser = remoteUser;
 
@@ -54,6 +56,9 @@ class PeerConnection extends ClassWithEvents {
         this.dispatch('init', { pc: this._pc, localStream });
     }
 
+    /**
+     * It closes the connection
+     */
     close() {
         if (this._pc === null) {
             this.dispatch('error', { type: PeerConnection.ERRORS.NOT_CALLED, error: {} });
@@ -65,8 +70,9 @@ class PeerConnection extends ClassWithEvents {
     }
 
     /**
+     * Adding of new local stream to the connection
      * 
-     * @param {Stream} stream 
+     * @param {Stream} stream Object of added local stream
      */
     addLocalStream(stream) {
         if (this._pc === null) {
@@ -88,8 +94,9 @@ class PeerConnection extends ClassWithEvents {
     }
 
     /**
+     * It adds ICE candidate data from remote user
      * 
-     * @param {IceCandidate} ice 
+     * @param {IceCandidate} ice Object with ICE candidate data from remote user
      */
     addIceCandidate(ice) {
         if (this._pc === null) {
@@ -100,6 +107,11 @@ class PeerConnection extends ClassWithEvents {
         this.dispatch('ice.added', { ice });
     }
 
+    /**
+     * It creates an offer to start connection with remote user
+     * 
+     * @param {object} offerOptions Options of offer
+     */
     createOffer(offerOptions = {}) {
         if (this._pc === null) {
             this.dispatch('error', { type: PeerConnection.ERRORS.NOT_CALLED, error: {} });
@@ -126,6 +138,11 @@ class PeerConnection extends ClassWithEvents {
             });
     }
 
+    /**
+     * It sets session description from remote user
+     * 
+     * @param {Sdp} sdp SDP data from remote user
+     */
     setRemoteDescription(sdp) {
         ValueChecker.check({ sdp }, {
             "stream": {
@@ -148,14 +165,38 @@ class PeerConnection extends ClassWithEvents {
         return this._localStream;
     }
 
+    /**
+     * SDP data from local user
+     * @readonly 
+     * @type {Sdp|null}
+     */
     get localDescription() {
         return this._localDescription;
     }
 
+    /**
+     * SDP data from remote user
+     * @readonly 
+     * @type {Sdp|null}
+     */
+    get remoteDescription() {
+        return this._localDescription;
+    }
+
+    /**
+     * Model of local user
+     * @readonly 
+     * @type {UserModel}
+     */
     get localUser() {
         return this._localUser;
     }
 
+    /**
+     * Model of remote user
+     * @readonly 
+     * @type {UserModel}
+     */
     get remoteUser() {
         return this._remoteUser;
     }
