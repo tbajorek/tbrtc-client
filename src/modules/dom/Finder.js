@@ -1,11 +1,25 @@
 import fnd from 'fnd';
 import DOMElementNotFound from '../../exceptions/DOMElementNotFound';
 
+/**
+ * Tool to finding DOM elements which is compatible with the given query and which is located in parent element
+ */
 class Finder {
-    static find(query, parent = null, first = false) {
+    /**
+     * It looks for DOM elements inside parent container which can be matched to given query
+     *
+     * @param {string} query Given criteria of matching. It's the same like used in CSS-selectors.
+     * @param {Element|null} parent Parent container
+     * @param {bool} first Flag if only first element or all should be returned
+     * @returns {Element[]|Element}
+     */
+    static find(query, parent = null, first = true) {
         if (parent === null) {
             parent = document;
         }
+        /**
+         * @type {Element[]} found
+         */
         const found = fnd(query, parent);
         switch (found.length) {
             case 0:

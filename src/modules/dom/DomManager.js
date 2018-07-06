@@ -1,14 +1,28 @@
 import ValueChecker from 'tbrtc-common/utilities/ValueChecker';
 import Finder from './Finder';
-import Video from './Video';
+import Video from './MediaElement';
 
+/**
+ * Manager of DOM elements for WebRTC communication
+ */
 class DomManager {
+    /**
+     * Initialization of the manager
+     *
+     * @param {object} config Configuration object
+     */
     constructor(config) {
         this._config = Object.assign({}, config);
         this._findVideo('local');
         this._findVideo('remote');
     }
 
+    /**
+     * Find video with the given type based on configuration
+     *
+     * @param {string} type One of video element types: 'local' or 'remote'
+     * @private
+     */
     _findVideo(type) {
         let container = document,
             found = null;
@@ -26,6 +40,11 @@ class DomManager {
             try {
                 found = Finder.find(this._config[type + 'Video'], container, true);
             } catch (e) {}
+            if(found === null) {
+                try {
+                    found = Finder.find('video', container, true);
+                } catch (e) {}
+            }
         }
         if (found === null) {
             found = Video.createVideo(type);
@@ -34,22 +53,52 @@ class DomManager {
         this._config[type + 'Video'] = found;
     }
 
+    /**
+     * DOM element which contains local video
+     *
+     * @readonly
+     * @type {Element}
+     */
     get localVideoContainer() {
         return this._config.localVideoContainer;
     }
 
+    /**
+     * Local video DOM element
+     *
+     * @readonly
+     * @type {Element}
+     */
     get localVideo() {
         return this._config.localVideo;
     }
 
+    /**
+     * DOM element which contains remote video
+     *
+     * @readonly
+     * @type {Element}
+     */
     get remoteVideoContainer() {
-        return this._config.localVideoContainer;
+        return this._config.remoteVideoContainer;
     }
 
+    /**
+     * Remote video DOM element
+     *
+     * @readonly
+     * @type {Element}
+     */
     get remoteVideo() {
         return this._config.remoteVideo;
     }
 
+    /**
+     * It clones video according to the given type and returns new DOM element
+     *
+     * @param type
+     * @returns {Node}
+     */
     cloneVideo(type) {
         ValueChecker.check({ type }, {
             "type": {
@@ -57,7 +106,9 @@ class DomManager {
                 "inside": ['local', 'remote'],
             }
         });
-        const clonedElement = type ? 'local' : this.config
+        const baseElement = type === 'local' ? this.localVideo : this.remoteVideo;
+        const clonedElement = baseElement.cloneNode(true);
+        return clonedElement;
     }
 }
 

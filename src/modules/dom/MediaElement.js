@@ -4,17 +4,20 @@ import BadParamType from 'tbrtc-common/exceptions/BadParamType';
 import FunctionalityNotSupported from '../../exceptions/FunctionalityNotSupported'
 import Stream from '../media/Stream'
 
-class Video {
+/**
+ * Class represents video element on a page. It's a wrapper which provides some basic functionality.
+ */
+class MediaElement {
     /**
-     * 
-     * @param {Element} domElement Dom object representing video element
+     * Initialization of video element
+     *
+     * @param {HTMLMediaElement} domElement Dom object representing video element
      * @param {Stream} stream Stream wrapper
      * @param {object} config Configuration object with initial parameters given to the original video element
      */
     constructor(domElement, stream, config = null) {
-        this._onLoad = (e) => {
-
-        };
+        this._initialized = false;
+        this._onLoad = (e) => {};
         if (domElement === null && typeof document !== 'undefined' && typeof document.createElement !== 'undefined') {
             domElement = document.createElement('video');
         } else if (typeof domElement !== 'object' ||
@@ -41,63 +44,122 @@ class Video {
         this._onLoad = handler;
     }
 
+    get onLoad() {
+        return this._onLoad;
+    }
+
     /**
-     * It creates stream on video element
+     * It captures stream from DOM media element
+     *
+     * @returns {MediaStream}
      */
-    createStream() {
-        if (!this._domElement.createStream) {
-            throw new FunctionalityNotSupported('video.createStream()');
+    captureStream() {
+        if (!this._domElement.captureStream) {
+            throw new FunctionalityNotSupported('{MediaHTMLElement}.captureStream()');
         }
-        return this._domElement.createStream();
+        return this._domElement.captureStream();
     }
 
     /**
      * It initializes video element with parameters given in config object
      */
     init() {
-        this._domElement.onloadedmetadata = (e) => {
-            this.play();
-            this._onLoad(e);
-        }
-        this._domElement.srcObject = this._stream.stream;
-        if (this._config !== null && typeof this._config.properties !== 'undefined') {
-            _.each(this._config.properties, (value, key) => this._domElement[key] = value);
+        if(!this._initialized) {
+            this._domElement.onloadedmetadata = (e) => {
+                this.play();
+                this._onLoad(e);
+            };
+            this._domElement.srcObject = this._stream.stream;
+            if (this._config !== null && typeof this._config.properties !== 'undefined') {
+                _.each(this._config.properties, (value, key) => this._domElement[key] = value);
+            }
+            this._initialized = true;
         }
         return this;
     }
 
+    /**
+     * It starts to play the video
+     *
+     * @returns {MediaElement}
+     */
     play() {
         this._domElement.play();
         return this;
     }
 
+    /**
+     * It stops to play the video
+     *
+     * @returns {MediaElement}
+     */
     stop() {
         this._domElement.pause();
         return this;
     }
 
     /**
-     * Getter for original video element
-     * @returns {Element}
+     * Original audio or video DOM element
+     *
+     * @property
+     * @readonly
+     * @type {HTMLAudioElement|HTMLVideoElement}
      */
     get domElement() {
         return this._domElement;
     }
 
     /**
+     * Source stream object
+     *
+     * @property
+     * @readonly
+     * @type {Stream}
+     */
+    get stream() {
+        return this._stream;
+    }
+
+    /**
      * It creates video DOM element according to the given type
      * 
      * @param {string} type Type of video ('local' or 'remote')
-     * @returns {Element}
+     * @returns {HTMLVideoElemen}
      */
     static createVideo(type) {
-        ValueChecker.check({ type }, {
+        return MediaElement._createElement('video', type);
+    }
+
+    /**
+     * It creates audio DOM element according to the given type
+     *
+     * @param {string} type Type of audio ('local' or 'remote')
+     * @returns {HTMLAudioElement}
+     */
+    static createAudio(type) {
+        return MediaElement._createElement('audio', type);
+    }
+
+    /**
+     * It creates media element for local or remote data
+     *
+     * @param {string} tag Tag name: 'audio' or 'video'
+     * @param {string} type Type of media: 'local' or 'remote'
+     * @returns {HTMLAudioElement|HTMLVideoElement}
+     * @private
+     */
+    static _createElement(tag, type) {
+        ValueChecker.check({ tag, type }, {
+            "tag": {
+                "typeof": 'string',
+                "inside": ['audio', 'video'],
+            },
             "type": {
                 "typeof": 'string',
                 "inside": ['local', 'remote'],
             }
         });
-        const element = document.createElement('video');
+        const element = document.createElement(tag);
         element.className = type + 'Video';
         element.setAttribute('autoplay', true);
         if (type === 'local') {
@@ -107,4 +169,4 @@ class Video {
     }
 }
 
-export default Video;
+export default MediaElement;

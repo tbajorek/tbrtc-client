@@ -180,7 +180,7 @@ class PeerConnection extends ClassWithEvents {
      * @type {Sdp|null}
      */
     get remoteDescription() {
-        return this._localDescription;
+        return this._remoteDescription;
     }
 
     /**

@@ -5,7 +5,7 @@ import FunctionalityNotSupported from '../../exceptions/FunctionalityNotSupporte
 class Volume
 {
     constructor(stream) {
-        var compatibility = Information.support.webAudio;
+        const compatibility = Information.support.webAudio;
         if(!compatibility.basic) {
             throw new FunctionalityNotSupported('WebAudio');
         } else if(!compatibility.createMediaStreamSource) {

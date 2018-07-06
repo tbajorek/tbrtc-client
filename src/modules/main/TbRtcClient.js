@@ -2,7 +2,7 @@ import _ from 'underscore';
 import defaultConfig from './default.config';
 import UserMedia from '../media/UserMedia';
 import Socket from '../signaling/Socket';
-import Video from '../dom/Video';
+import MediaElement from '../dom/MediaElement';
 import MultiConnection from '../connection/MultiConnection';
 import Constraints from '../config/Constraints';
 import Information from '../media/Information';
@@ -14,7 +14,7 @@ class TbRtcClient {
         this.providers = {
             MediaProvider: UserMedia,
             Signaling: Socket,
-            VideoElement: Video,
+            MediaElement: MediaElement,
             Connection: MultiConnection,
             ConstraintFilter: Constraints,
             Information: Information,
@@ -38,11 +38,11 @@ class TbRtcClient {
     _mediaRequest() {
         const oldCallback = this.providers.MediaProvider.onSuccess;
         this.providers.MediaProvider.onSuccess = (stream) => {
-            this._localVideo = new Video(this._domManager.localVideo, stream, { autoInit: true });
+            this._localVideo = new MediaElement(this._domManager.localVideo, stream, { autoInit: true });
             this._domManager.localVideo.srcObject = stream.stream;
             this._localVideo.init();
             oldCallback(stream);
-        }
+        };
         this.providers.MediaProvider.get(
             this.providers.ConstraintFilter.filterAll(
                 this._config.mediaConstraints

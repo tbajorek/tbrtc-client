@@ -2,58 +2,126 @@ import bowser from 'bowser'
 import Information from './Information'
 import Translation from 'tbrtc-common/translate/Translation';
 
+/**
+ * Object with basic set of functionality to enumerate available devices and check its permissions
+ *
+ * @readonly
+ * @type {object}
+ */
 const Devices = {
+    /**
+     * List of all available devices
+     *
+     * @type {object|null}
+     */
     _list: null,
+    /**
+     * List of all available devices if browser allows to do it. It's a property which is calculated while the first use.
+     *
+     * @readonly
+     * @type {object|null}
+     */
     get list() {
         if(!this.canEnumerate()) {
             return null;
         }
         if(this._list === null) {
-            var context = this;
+            const context = this;
             this._enumerateDevices(function(devices){
                 context._list = devices;
             });
         }
         return this._list;
     },
+    /**
+     * It prepares device list
+     *
+     * @param {function|null} callback Callback to be executed when device list is created.
+     * It's argument is list with enumerated devices.
+     */
     load(callback = null) {
         this._enumerateDevices(callback);
     },
+    /**
+     * List of audio input devices
+     *
+     * @readonly
+     * @type {object[]|null}
+     */
     get microphone() {
         return this._list | this._list.audioInput;
     },
+    /**
+     * List of audio output devices
+     *
+     * @readonly
+     * @type {object[]|null}
+     */
     get speakers() {
         return this._list | this._list.audioOutput;
     },
+    /**
+     * List of camera devices
+     *
+     * @readonly
+     * @type {object[]|null}
+     */
     get webcam() {
         return this._list | this._list.videoInput;
     },
     _webcamPermission: false,
-    get webcamPermission() {
+    /**
+     * Flag if webcam device has already granted permissions
+     *
+     * @readonly
+     * @type  {boolean}
+     */
+    get webcamPermissions() {
         return this._webcamPermission;
     },
     _microphonePermission: false,
-    get microphonePermission() {
+    /**
+     * Flag if audio input device has already granted permissions
+     *
+     * @readonly
+     * @type  {boolean}
+     */
+    get microphonePermissions() {
         return this._microphonePermission;
     },
+    /**
+     * It checks if browser allows to enumerate all available devices
+     *
+     * @returns {boolean}
+     */
     canEnumerate() {
         return navigator.mediaDevices && !!navigator.mediaDevices.enumerateDevices;
     },
-    _enumerateDevices(callback = null) {
-        var devices = {
+    /**
+     * It enumerates all available devices. It's asynchronous method.
+     * Result is assigned to a property and also passed to the given callback.
+     *
+     * @param {function} callback Callback where is passed result
+     * @param {function} error Callback where is passed result
+     * @private
+     */
+    _enumerateDevices(callback = null, error = (e) => {console.log('EnumDevicesError:'+e.message);}) {
+        const devices = {
             "audioInput": [],
             "audioOutput": [],
             "videoInput": []
         };
-        var microphone = false, webcam = false;
+        let microphone = false, webcam = false;
         navigator.mediaDevices.enumerateDevices().then(function(allDevices){
             allDevices.forEach(function(device){
+                // Before request for user media labels of devices are not available
                 if (!device.label) {
                     console.warn(
                         Translation.instance._('Label of device {device} is unavailable for now. Please request for user media first.', {
                             "device": device.id
                         })
                     );
+                    // For Chrome since browser version 46 if the source of site is not localhost, you need to provide HTTPS connection
                     if (bowser.chrome && bowser.version >= 46 && !/^(https:|chrome-extension:)$/g.test(location.protocol || '')) {
                         if (typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1) {
                             console.warn(
@@ -87,7 +155,7 @@ const Devices = {
                     }
                 }
             });
-        });
+        }).catch(error);
         this._microphonePermission = microphone;
         this._webcamPermission = webcam;
         if(typeof callback === 'function') {
