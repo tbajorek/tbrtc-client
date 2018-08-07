@@ -7,24 +7,47 @@
     <style>
         #localVideo {
             border: 1px solid red;
+            max-height: 200px;
         }
         
         #remoteVideo {
             border: 1px solid blue;
+            max-height: 200px;
         }
     </style>
 </head>
 
 <body>
+Wideo: <input type="checkbox" name="mediaType" id="videoType" checked=""true"></input>
+    Audio: <input type="checkbox" name="mediaType" id="audioType"></input>
     <video id="localVideo" muted="true"></video>
     <video id="remoteVideo"></video>
-    <input id="currentUsernameInput" />
-    <input id="currentEmailInput" />
+    <input id="currentUsernameInput" placeholder="username" value="tb" />
+    <input id="currentEmailInput" placeholder="email" value="tb@example.com" />
     <button id="loginButton">Log in</button>
 
-    <button id="newSessionButton">New session</button>
-    <input id="sessionIdInput" />
-    <button id="joinSessionButton">Join session</button>
+    <button id="newSessionButton" disabled="true">New session</button>
+    <input id="sessionIdInput" placeholder="session id" disabled="true" />
+    <button id="joinSessionButton" disabled="true">Join session</button>
+    <button id="stopRequestButton" disabled="true">Stop request</button>
+
+    <input id="acceptedUsername" placeholder="accepted_username" disabled="true" />
+    <button id="acceptButton" disabled="true">Accept user</button>
+    <button id="rejectButton" disabled="true">Reject user</button>
+
+    <button id="closeButton" disabled="true">Close session</button>
+    <button id="leaveButton" disabled="true">Leave session</button>
+    <button id="logoutButton" disabled="true">Logout</button>
+
+    Session id: <p id="sessionIdText"></p>
+
+    <textarea id="chat" disabled="true"></textarea>
+    <textarea id="messageText"></textarea>
+    <button id="messageButton" disabled="true">Send</button>
+    Logi: <p id="logsText"></p>
+    <label>Send a file:
+    <input type="file" id="fileInput" disabled="true">
+    </label>
 </body>
 <script src="../dist/tbrtc.js"></script>
 

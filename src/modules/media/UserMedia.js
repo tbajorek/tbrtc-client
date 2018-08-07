@@ -1,7 +1,6 @@
-import _ from 'underscore'
+import _ from 'underscore';
+import Translation from 'tbrtc-common/translate/Translation';
 import BadParamType from 'tbrtc-common/exceptions/BadParamType';
-import Constraints from '../config/Constraints'
-import Compatibility from '../utilities/Compatibility'
 import Stream from './Stream'
 
 /**
@@ -10,35 +9,65 @@ import Stream from './Stream'
 const UserMedia = {
     /**
      * Stream which is accessed by the provider
+     *
+     * @type {Stream|null}
+     * @property
      */
     _stream: null,
     /**
+     * Flag if debug mode is activated
+     *
+     * @type {boolean}
+     * @property
+     */
+    debug: false,
+    /**
      * Success callback
-     * 
+     *
+     * @method
      * @param {Stream} stream - Stream object from accessed media
      */
-    onSuccess: function(stream) { console.log(stream); },
+    onSuccess: function(stream) {
+        if(UserMedia.debug) {
+            const message = Translation.instance._('User media has been got successfully');
+            console.info(message);
+        }
+    },
     /**
      * Error callback
-     * 
+     *
+     * @method
      * @param {MediaStreamError} error - Error object with details
      */
-    onError: function(error) { console.error(error); },
+    onError: function(error) {
+        if(UserMedia.debug) {
+            const message = Translation.instance._('Error in {uname} module: ({etype}) {emsg}', {
+                uname: 'UserMedia',
+                etype: error.name,
+                emsg: error.message
+            });
+            console.error(message);
+        }
+    },
     /**
      * This method allows to get access to user media. The access can be available in {@link onSuccess} method
+     *
+     * @method
+     * @param {object} constraints Object with constraints data
+     * @returns {Promise<MediaStream>}
      */
     get: function(constraints) {
-        if (!_.isFunction(this.onSuccess)) {
+        if (!_.isFunction(UserMedia.onSuccess)) {
             throw new BadParamType("onSuccess", "UserMedia.get", "function");
         }
-        if (!_.isFunction(this.onError)) {
+        if (!_.isFunction(UserMedia.onError)) {
             throw new BadParamType("onError", "UserMedia.get", "function");
         }
         if (UserMedia._stream !== null) {
-            this.stop();
+            UserMedia.stop();
         }
         if (Array.isArray(constraints)) {
-            for (var i = 0; i < constraints.length; ++i) {
+            for (let i = 0; i < constraints.length; ++i) {
                 if (typeof constraints[i] === 'function') {
                     constraints[i] = constraints[i]();
                 }
@@ -51,16 +80,19 @@ const UserMedia = {
         then(function(s) {
             UserMedia._stream = new Stream(s);
             UserMedia.onSuccess(UserMedia._stream);
+            return UserMedia._stream;
         }).catch(UserMedia.onError);
     },
     /**
-     * You can stop stream if it's available
+     * It stops yhe current stream if it's available
+     *
+     * @method
      */
     stop() {
-        if (this._stream !== null) {
-            this._stream.stop();
+        if (UserMedia._stream !== null) {
+            UserMedia._stream.stop();
         }
-        this._stream = null;
+        UserMedia._stream = null;
     }
 };
 

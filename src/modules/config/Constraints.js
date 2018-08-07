@@ -1,4 +1,5 @@
 import _ from 'underscore';
+import bowser from 'bowser';
 import Compatibility from '../utilities/Compatibility'
 import IncorrectConstraint from '../../exceptions/IncorrectConstraint'
 
@@ -8,7 +9,8 @@ import IncorrectConstraint from '../../exceptions/IncorrectConstraint'
 const Constraints = {
     /**
      * It generates set of constraints for video media
-     * 
+     *
+     * @method
      * @param {object|null} options It contains list of constraints for video media
      * @returns {object}
      */
@@ -24,7 +26,8 @@ const Constraints = {
     },
     /**
      * It generates set of constraints for audio media
-     * 
+     *
+     * @method
      * @param {object|null} options It contains list of constraints for audio media
      * @returns {object}
      */
@@ -40,7 +43,8 @@ const Constraints = {
     },
     /**
      * It generates set of constraints for device screen
-     * 
+     *
+     * @method
      * @param {object|null} options It contains list of constraints for device screen
      * @returns {object}
      */
@@ -48,8 +52,21 @@ const Constraints = {
         if (options === null) {
             options = true;
         }
+        const baseOptions = bowser.chrome ? {
+            mandatory: {
+                chromeMediaSource: 'screen',
+                maxWidth: screen.width,
+                maxHeight: screen.height,
+                minFrameRate: 1,
+                maxFrameRate: 5
+            },
+            optional: []
+        } : {
+            mediaSource: screen
+        };
+        const allOptions = (options !== null) ? _.extendOwn(baseOptions, options) : baseOptions;
         return {
-            "videos": options
+            "video": allOptions
         };
     },
     /**
@@ -69,7 +86,8 @@ const Constraints = {
     },
     /**
      * It checks if all given constraints for single media type are available on user device
-     * 
+     *
+     * @method
      * @param {object} input Set of constraints for single media type
      * @returns {object}
      */
@@ -85,7 +103,8 @@ const Constraints = {
     },
     /**
      * It checks if all given constraints for all media types are available on user device
-     * 
+     *
+     * @method
      * @param {object} input Set of constraints for all media types
      * @returns {object}
      */

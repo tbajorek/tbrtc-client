@@ -1,3 +1,5 @@
+import dateformat from 'dateformat';
+import Translation from 'tbrtc-common/translate/Translation';
 import Event from 'tbrtc-common/event/Event';
 import EventContainer from 'tbrtc-common/event/EventContainer';
 import BadParamType from 'tbrtc-common/exceptions/BadParamType';
@@ -5,20 +7,35 @@ import { User as UserModel } from 'tbrtc-common/model/User';
 import { Message } from 'tbrtc-common/messages/Message';
 import { User as UserMessage } from 'tbrtc-common/messages/User';
 import { Session as SessionMessage } from 'tbrtc-common/messages/Session';
+import { IceCandidate as IceMessage } from 'tbrtc-common/messages/IceCandidate';
+import { SdpTransfer as SdpMessage } from 'tbrtc-common/messages/SdpTransfer';
+import { Chat as ChatMessage } from 'tbrtc-common/messages/Chat';
+import { Sdp } from 'tbrtc-common/model/Sdp';
 import MessageFactory from 'tbrtc-common/factory/MessageFactory';
 import AbstractClassUsed from '../../exceptions/AbstractClassUsed';
-import PeerConnection from '../connection/PeerConnection';
 import SessionRequest from "./SessionRequest";
 
+/**
+ * Abstract signaling mechanism. It must be extended by concrete implementation.
+ */
 class AbstractSignaling {
     constructor(config) {
         this._config = config;
         this._events = EventContainer.instance;
         this.builtInEvents.forEach(eventName => this._events.register(new Event(eventName)));
         this._initialize();
-        this._peerConnections = [];
         this._currentUser = null;
         this._currentSessionId = null;
+        this._state = this.states.DISCONNECTED;
+        if(typeof window !== 'undefined') {
+            window.onbeforeunload = () => {
+                this.close();
+            };
+            window.onkeyup = (e) => {
+                if (e.keyCode === 116)
+                    this.close();
+            };
+        }
     }
 
     sendMessage(message) {
@@ -52,45 +69,70 @@ class AbstractSignaling {
         );
     }
 
-    addPeerConnection(peerConnection) {
-        if(peerConnection instanceof PeerConnection) {
-            this._peerConnections.push(peerConnection);
-        } else {
-            throw new BadParamType('peerConnection', 'addPeerConnection', 'modules/connection/PeerConnection');
-        }
-    }
-
     joinSession(sessionId) {
         this.sendMessage(
             new SessionMessage('session.request', sessionId, this._currentUser)
         );
     }
 
-    sessionLeave() {
-
+    stopRequest(sessionId) {
+        this.sendMessage(
+            new SessionMessage('session.stop', sessionId, this._currentUser)
+        );
     }
 
-    sendIce(ice) {
-
+    sendChatMessage(content) {
+        if(this.currentSessionId === null) {
+            this.dispatch('result.error', { message: Translation.instance._('The message can not be sent because you are not a member of a session') });
+        }
+        this.sendMessage(
+            new ChatMessage(this.currentSessionId, this._currentUser, content, dateformat(new Date(), "fullDate"))
+        );
     }
 
-    sendSdp(sdp) {
+    leaveSession() {
+        this.sendMessage(
+            new SessionMessage('session.leave', this._currentSessionId, this._currentUser)
+        );
+    }
+
+    closeSession() {
+        this.sendMessage(
+            new SessionMessage('session.close', this._currentSessionId, this._currentUser)
+        );
+    }
+
+    close() {
+        throw new AbstractClassUsed('modules/signaling/AbstractSignaling');
+    }
+
+    sendIce(ice, remoteUser) {
+        this.sendMessage(
+            new IceMessage(this._currentSessionId, remoteUser, ice)
+        );
+        this.dispatch('ice.sent', ice);
+    }
+
+    sendSdp(sdp, remoteUser) {
+        this.sendMessage(
+            new SdpMessage(this._currentSessionId, remoteUser, sdp)
+        );
         if(sdp.type === Sdp.types.OFFER) {
             this.dispatch('offer.sent', sdp);
         } else {
             this.dispatch('answer.sent', sdp);
         }
-        this.dispatch()
+        this.dispatch('sdp.sent', sdp);
     }
 
     /**
      * Produce Message object from JSON data. Event 'message.received' is dispatched.
+     *
      * @param {Object} jsonMessage JSON object with message data
      * @protected
      */
     _receiveMessage(jsonMessage) {
         const message = MessageFactory.createFromJson(jsonMessage);
-        console.log(message.type);
         this.dispatch('message.received', { message });
         switch (message.type) {
             case 'user.init':
@@ -108,7 +150,29 @@ class AbstractSignaling {
             case 'session.reject':
                 this._sessionReject(message);
                 break;
+            case 'session.data':
+                this._sessionData(message);
+                break;
+            case 'session.stop':
+                this._sessionStop(message);
+                break;
+            case 'session.leave':
+                this._sessionLeave(message);
+                break;
+            case 'session.close':
+                this._sessionClose(message);
+                break;
+            case 'sdp.transfer':
+                this._sdpReceived(message);
+                break;
+            case 'ice.candidate':
+                this._iceReceived(message);
+                break;
+            case 'chat.message':
+                this._chatMessage(message);
+                break;
             case 'success':
+                this._handleSuccess();
                 this.dispatch('result.success', { message });
                 break;
             case 'error':
@@ -117,10 +181,25 @@ class AbstractSignaling {
         }
     }
 
+    _handleSuccess() {
+        switch (this._state) {
+            case this.states.CONNECTING:
+                this._state = this.states.CONNECTED;
+                this.dispatch('user.connected', { user: this._currentUser });
+                break;
+            case this.states.DISCONNECTING:
+                this._state = this.states.DISCONNECTED;
+                this.dispatch('user.disconnected', { user: this._currentUser });
+                break;
+            default:
+
+        }
+    }
+
     _userInit(sourceUser) {
         this._currentUser.connectionId = sourceUser.connectionId;
         this._currentUser.id = sourceUser.id;
-        console.log(this._currentUser);
+        this._state = this.states.CONNECTING;
         this.sendMessage(
             new UserMessage('user.connect', this._currentUser)
         );
@@ -138,6 +217,7 @@ class AbstractSignaling {
     }
 
     _sessionAnswer(message) {
+        message.data.decidedBy = this._currentUser;
         this.sendMessage(message);
     }
 
@@ -148,7 +228,53 @@ class AbstractSignaling {
 
     _sessionReject(message) {
         const { sessionId, user } = message;
-        this.dispatch('session.rejected', { sessionId, user });
+        const { decidedBy } = message.data;
+        this.dispatch('session.rejected', { sessionId, user, decidedBy });
+    }
+
+    _sessionData(message) {
+        this._currentSessionId = message.data.session.id;
+        this.dispatch('session.joined', { session: message.data.session });
+    }
+
+    _sessionStop(message) {
+        const { sessionId, user } = message;
+        this.dispatch('session.request.stopped', { sessionId, user });
+    }
+
+    _sessionLeave(message) {
+        const { sessionId, user } = message;
+        if(user.id === this._currentUser.id) {
+            this.dispatch('session.left', { sessionId, user });
+        } else {
+            this.dispatch('session.left.user', { sessionId, user });
+        }
+    }
+
+    _sessionClose(message) {
+        const { sessionId, user } = message;
+        this.dispatch('session.closed', { sessionId, user });
+    }
+
+    _sdpReceived(message) {
+        const { sessionId, user, sdp } = message;
+        let type;
+        if(sdp.type === Sdp.types.OFFER) {
+            type = 'offer.received';
+        } else {
+            type = 'answer.received';
+        }
+        this.dispatch(type, { sessionId, user, sdp });
+        this.dispatch('sdp.received', { sessionId, user, sdp });
+    }
+
+    _iceReceived(message) {
+        const { sessionId, user, ice } = message;
+        this.dispatch('ice.received', { sessionId, user, ice });
+    }
+
+    _chatMessage(message) {
+        this.dispatch('chat.message', { message });
     }
 
     _connectionLost() {
@@ -161,6 +287,7 @@ class AbstractSignaling {
 
     /**
      * Add new handler to specified event
+     *
      * @param {string} eventName Name of event
      * @param {function} handler Handler to be executed when event occurs
      */
@@ -176,6 +303,10 @@ class AbstractSignaling {
         return this._config;
     }
 
+    /**
+     *
+     * @returns {*}
+     */
     get events() {
         return this._events;
     }
@@ -188,8 +319,13 @@ class AbstractSignaling {
         return this._currentSessionId;
     }
 
+    get state() {
+        return this._state;
+    }
+
     /**
      * Return built-in events
+     *
      * @returns {string[]} Built-in events
      */
     get builtInEvents() {
@@ -197,18 +333,40 @@ class AbstractSignaling {
             'connection.opened',
             'connection.lost',
             'connection.closed',
+            'user.connected',
+            'user.disconnected',
             'session.created',
             'session.requested',
+            'session.request.stopped',
             'session.confirmed',
             'session.rejected',
+            'session.joined',
+            'session.left',
+            'session.left.user',
+            'session.closed',
+            'chat.message',
+            'sdp.sent',
             'offer.sent',
             'offer.received',
+            'sdp.received',
+            'ice.received',
+            'ice.sent',
             'answer.sent',
             'answer.received',
             'message.received',
             'result.success',
             'result.error',
+            'signaling.error',
         ]
+    }
+
+    get states() {
+        return {
+            DISCONNECTED: 0,
+            CONNECTING: 1,
+            CONNECTED: 2,
+            DISCONNECTING: 3,
+        }
     }
 }
 

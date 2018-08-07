@@ -16,6 +16,12 @@ const Devices = {
      */
     _list: null,
     /**
+     * Flag if warnings should be shown
+     *
+     * @type {boolean}
+     */
+    showWarnings: true,
+    /**
      * List of all available devices if browser allows to do it. It's a property which is calculated while the first use.
      *
      * @readonly
@@ -27,7 +33,7 @@ const Devices = {
         }
         if(this._list === null) {
             const context = this;
-            this._enumerateDevices(function(devices){
+            this.load(function(devices){
                 context._list = devices;
             });
         }
@@ -39,8 +45,8 @@ const Devices = {
      * @param {function|null} callback Callback to be executed when device list is created.
      * It's argument is list with enumerated devices.
      */
-    load(callback = null) {
-        this._enumerateDevices(callback);
+    load(callback = null, error = this._errorLoad) {
+        this._enumerateDevices(callback, error);
     },
     /**
      * List of audio input devices
@@ -97,6 +103,9 @@ const Devices = {
     canEnumerate() {
         return navigator.mediaDevices && !!navigator.mediaDevices.enumerateDevices;
     },
+    _errorLoad(e) {
+        console.error('EnumDevicesError: '+e.message);
+    },
     /**
      * It enumerates all available devices. It's asynchronous method.
      * Result is assigned to a property and also passed to the given callback.
@@ -105,17 +114,18 @@ const Devices = {
      * @param {function} error Callback where is passed result
      * @private
      */
-    _enumerateDevices(callback = null, error = (e) => {console.log('EnumDevicesError:'+e.message);}) {
+    _enumerateDevices(callback = null, error = this._errorLoad) {
         const devices = {
             "audioInput": [],
             "audioOutput": [],
             "videoInput": []
         };
         let microphone = false, webcam = false;
+        const context = this;
         navigator.mediaDevices.enumerateDevices().then(function(allDevices){
             allDevices.forEach(function(device){
                 // Before request for user media labels of devices are not available
-                if (!device.label) {
+                if (!device.label && context.showWarnings) {
                     console.warn(
                         Translation.instance._('Label of device {device} is unavailable for now. Please request for user media first.', {
                             "device": device.id
@@ -123,7 +133,7 @@ const Devices = {
                     );
                     // For Chrome since browser version 46 if the source of site is not localhost, you need to provide HTTPS connection
                     if (bowser.chrome && bowser.version >= 46 && !/^(https:|chrome-extension:)$/g.test(location.protocol || '')) {
-                        if (typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1) {
+                        if (typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1  && context.showWarnings) {
                             console.warn(
                                 Translation.instance._('You need safe HTTPS protocols to read label of this device {device}', {
                                     "device": device.id
@@ -155,12 +165,12 @@ const Devices = {
                     }
                 }
             });
+            context._microphonePermission = microphone;
+            context._webcamPermission = webcam;
+            if(typeof callback === 'function') {
+                callback(devices);
+            }
         }).catch(error);
-        this._microphonePermission = microphone;
-        this._webcamPermission = webcam;
-        if(typeof callback === 'function') {
-            callback(devices);
-        }
     }
 };
 

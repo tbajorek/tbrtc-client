@@ -186,7 +186,7 @@ const Information = {
          * @type {boolean}
          */
         get webSocket() {
-            return 'WebSocket' in window && 1 === window.WebSocket.OPEN || Information.isNodeJs;
+            return (typeof window !== 'undefined' && 'WebSocket' in window && 1 === window.WebSocket.OPEN) || Information.isNodeJs;
         },
         /**
          * If RTC sender can replace tracks without renegotiating peer connection

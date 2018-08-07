@@ -13,7 +13,7 @@ import TbRtcClient from './modules/main/TbRtcClient';
 
 const uuidv4 = require('uuid');
 
-Translation.instance.setLocale('pl_PL');
+// Translation.instance.setLocale('pl_PL');
 
 /*UserMedia.onSuccess = function(stream) {
     console.log('OK');
@@ -67,12 +67,202 @@ joinSessionButton.addEventListener('click', () => {
 });
 */
 
-const tbRtcClient = new TbRtcClient({
-    mediaConstraints: {
-        audio: true,
-        video: true,
+window.tbRtcClient = new TbRtcClient({
+    signaling: {
+        server: 'ws://0.0.0.0:9876'
+    },
+    peerConfig: {
+        iceServers: [
+            {
+                "urls": [
+                    "stun:stun.l.google.com:19302"
+                ]
+            }
+        ]
     }
+    //debug: true
 });
-/*tbRtcClient.on('MediaProvider', 'success', () => alert('success'));
-tbRtcClient.on('MediaProvider', 'error', () => alert('error'));*/
-tbRtcClient.start();
+
+const connect = () => {
+    loginButton.disabled = true;
+    currentUsernameInput.disabled = true;
+    currentEmailInput.disabled = true;
+    newSessionButton.disabled = false;
+    sessionIdInput.disabled = false;
+    joinSessionButton.disabled = false;
+    logoutButton.disabled = false;
+    stopRequestButton.disabled = false;
+};
+
+const disconnect = () => {
+    loginButton.disabled = false;
+    currentUsernameInput.disabled = false;
+    currentEmailInput.disabled = false;
+    newSessionButton.disabled = true;
+    sessionIdInput.disabled = true;
+    joinSessionButton.disabled = true;
+    logoutButton.disabled = true;
+
+};
+
+const newRequest = (username) => {
+    acceptedUsername.disabled = false;
+    acceptedUsername.value = username;
+    acceptButton.disabled = false;
+    rejectButton.disabled = false;
+};
+
+const cleanRequest = () => {
+    acceptedUsername.value = '';
+    acceptedUsername.disabled = true;
+    acceptButton.disabled = true;
+    rejectButton.disabled = true;
+};
+
+const sessionActive = () => {
+    stopRequestButton.disabled = true;
+    messageButton.disabled = false;
+    leaveButton.disabled = false;
+    fileInput.disabled = false;
+};
+
+const sessionInactive = () => {
+    messageButton.disabled = true;
+    leaveButton.disabled = true;
+    closeButton.disabled = true;
+    fileInput.disabled = true;
+};
+
+const initializeFileInput = (fileInput) => {
+    const file = tbRtcClient.addFileInput(fileInput);
+    file.on('file.chosen', (event) => {
+        //tbRtcClient.sendFiles(event.data.files);
+    });
+};
+
+tbRtcClient.isAnyError(error => {
+    console.error(error.toString());
+});
+
+tbRtcClient.isInitialized(() => {
+    initializeFileInput(fileInput);
+    tbRtcClient.isConnected(() => {
+        connect();
+    });
+    tbRtcClient.isNewSession((sessionId) => {
+        closeButton.disabled = false;
+        sessionIdText.innerHTML = sessionId;
+        sessionActive();
+    });
+    tbRtcClient.isJoined((session) => {
+        sessionIdText.innerHTML = session.id;
+        sessionActive();
+    });
+
+    tbRtcClient.isNewUser((user) => {
+        console.log('user '+user.name+' joined to this session');
+    });
+
+    tbRtcClient.isRejectedMe((data) => {
+        console.log('you are rejected by member ' + data.decidedBy.name + ' of the session ' + data.sessionId);
+    });
+
+    tbRtcClient.isRejected((data) => {
+        cleanRequest();
+    });
+
+
+    tbRtcClient.isRequest((request) => {
+        newRequest(request.requestMessage.user.name);
+        acceptButton.onclick = (e) => {
+            cleanRequest();
+            request.confirm();
+        };
+        rejectButton.onclick = (e) => {
+            cleanRequest();
+            request.reject();
+        };
+    });
+
+    tbRtcClient.isRequestStopped(() => {
+        cleanRequest();
+        console.log('request stopped');
+    });
+
+    tbRtcClient.isNewChatMessage((message) => {
+        chat.innerHTML += '(' + message.date+') '+message.user.name+': '+message.content+'\n';
+    });
+
+    tbRtcClient.isSessionUnavailable(() => {
+        sessionInactive();
+        sessionIdText.innerHTML = '';
+    });
+
+    tbRtcClient.isSessionUserLeft(({session, user}) => {
+        console.log('user '+user.name+' left the session');
+    });
+
+    tbRtcClient.isSessionClosed(() => {
+        closeButton.disabled = true;
+    });
+
+    tbRtcClient.isDisconnected(() => {
+        disconnect();
+    });
+
+
+
+    tbRtcClient.isFileTransferStart(event => {
+        console.log('file started', event);
+    });
+
+    tbRtcClient.isFileTransferProgress(event => {
+        console.log('file updated', event.data.currentChunk);
+    });
+
+    tbRtcClient.isFileReceived(event => {
+        logsText.innerHTML += 'Received file '+event.file.info.name+' ('+event.file.readableSize + ') from '+event.sender.name+'<br />';
+        event.file.download();
+    });
+
+    /*tbRtcClient.on('MediaProvider', 'success', () => alert('success'));
+    tbRtcClient.on('MediaProvider', 'error', () => alert('error'));*/
+    loginButton.addEventListener('click', () => {
+        const userModel = new UserModel(null, currentUsernameInput.value, currentEmailInput.value);
+        userModel.originalId = uuidv4();
+        tbRtcClient.setCurrentUser(userModel);
+        tbRtcClient.start({
+            audio: audioType.checked,
+            video: videoType.checked,
+        });
+    });
+
+    newSessionButton.addEventListener('click', () => {
+        tbRtcClient.startSession();
+    });
+
+    joinSessionButton.addEventListener('click', () => {
+        tbRtcClient.joinSession(sessionIdInput.value);
+    });
+
+    stopRequestButton.addEventListener('click', () => {
+        tbRtcClient.stopRequest(sessionIdInput.value);
+    });
+
+    messageButton.addEventListener('click', () => {
+        tbRtcClient.sendChatMessage(messageText.value);
+        messageText.value = '';
+    });
+
+    leaveButton.addEventListener('click', () => {
+        tbRtcClient.leaveSession();
+    });
+
+    closeButton.addEventListener('click', () => {
+        tbRtcClient.closeSession();
+    });
+
+    logoutButton.addEventListener('click', () => {
+        tbRtcClient.disconnect();
+    });
+});

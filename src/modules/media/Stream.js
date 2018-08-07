@@ -1,6 +1,7 @@
 import _ from 'underscore'
 import TrackNotFound from '../../exceptions/TrackNotFound';
 import Volume from './Volume'
+import UserMedia from "./UserMedia";
 
 /**
  * This class wraps original MediaStream object and provides united functionality to get full control of it
@@ -15,6 +16,7 @@ class Stream
     constructor(stream) {
         this._stream = stream;
         this._volume = null;
+        this._hiddenStream = null;
     }
 
     /**
@@ -22,10 +24,116 @@ class Stream
      *
      * @readonly
      * @property
-     * @type {MediaStream}
+     * @type {MediaStream|null}
      */
     get stream() {
         return this._stream;
+    }
+
+    get onlyAudio() {
+        return this.audio.tracks.length > 0 && !this.video.tracks.length;
+    }
+
+    get onlyVideo() {
+        return this.video.tracks.length > 0 && !this.audio.tracks.length;
+    }
+
+    /**
+     * Snapshot of current data of stream.
+     * Using this property too often leads to reduction of performance,
+     * because it contains some calculations.
+     *
+     * @readonly
+     * @property
+     * @type {Blob}
+     */
+    get snapshot() {
+        const settings = this.video.getSettings();
+        const width = settings.width;
+        const height = settings.height;
+
+        let video = document.createElement('video');
+        video.width = width;
+        video.height = height;
+        video.srcObject = this.stream;
+
+        let canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, width, height);
+        const data = canvas.toDataURL('image/png');
+        video = null;
+        canvas = null;
+
+        let byteString;
+        if (data.split(',')[0].indexOf('base64') >= 0) {
+            byteString = atob(data.split(',')[1]);
+        } else {
+            byteString = unescape(data.split(',')[1]);
+        }
+
+        const ia = new Uint8Array(byteString.length);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+
+        return new Blob([ia], {type: 'image/png'});
+    }
+
+    /**
+     * It hides stream. After that 'stream' property is set as null.
+     * It's possible to revert this operation by executing {@link show} method.
+     */
+    hide() {
+        if(!this.hidden) {
+            this._hiddenStream = this._stream;
+            this._stream = null;
+        }
+    }
+
+    /**
+     * It shows hidden stream
+     */
+    show() {
+        if(this.hidden) {
+            this._stream = this._hiddenStream;
+            this._hiddenStream = null;
+        }
+    }
+
+    /**
+     * This flag informs if the current stream is hidden or not
+     *
+     * @property
+     * @readonly
+     * @type{boolean}
+     */
+    get hidden() {
+        return this._hiddenStream !== null;
+    }
+
+    /**
+     * It saves current snapshot to the PNG file with given name. Snapshot data as a Blob object is returned.
+     *
+     * @param {string} fileName Name of file which will be downloaded.
+     * If PNG extension is not specified, it will be added.
+     *
+     * @returns {Blob}
+     */
+    saveSnapshot(fileName) {
+        const fileNameWithType = (fileName.indexOf('.png') >= 0) ? fileName : fileName + '.png';
+        const link = document.createElement("a");
+        document.body.appendChild(a);
+        link.style = 'display: none';
+        const snapshot = this.snapshot;
+        const url = window.URL.createObjectURL(snapshot);
+        a.href = url;
+        a.download = fileNameWithType;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        return snapshot;
     }
 
     /**
