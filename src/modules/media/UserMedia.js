@@ -27,7 +27,7 @@ const UserMedia = {
      * @method
      * @param {Stream} stream - Stream object from accessed media
      */
-    onSuccess: function(stream) {
+    onSuccess: (stream) => {
         if(UserMedia.debug) {
             const message = Translation.instance._('User media has been got successfully');
             console.info(message);
@@ -39,7 +39,7 @@ const UserMedia = {
      * @method
      * @param {MediaStreamError} error - Error object with details
      */
-    onError: function(error) {
+    onError: (error) => {
         if(UserMedia.debug) {
             const message = Translation.instance._('Error in {uname} module: ({etype}) {emsg}', {
                 uname: 'UserMedia',

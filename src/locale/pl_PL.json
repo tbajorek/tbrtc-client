@@ -36,5 +36,9 @@
     "Remote user with id {ruser} has not been found": "Zdalny użytkownik o identyfikatorze {ruser} nie został znaleziony",
     "The local user is already a member of session {sid}": "Użytkownik lokalny jest już członkiem sesji {sid}",
     "Media request has been already done. Please refresh page before doing it again.": "Zapytanie o dostęp do mediów zostało już wykonane. Proszę odświeżyć stronę przed wykonaniem tego ponownie.",
-    "Peer connection is not yet initialized": "Połączenie bezpośrednie nie zostało jeszcze zainicjalizowane"
+    "Peer connection is not yet initialized": "Połączenie bezpośrednie nie zostało jeszcze zainicjalizowane",
+    "Signaling connection can not be initialized in its current state: {cstate}": "Połączenie sygnalizacji nie może być zainicjowane w jego obecnym stanie: {cstate}",
+    "File {oname} is collected but {cname} has been received": "Plik {oname} jest pobrany ale {cname} został odebrany",
+    "Signaling message can not be sent because connection is not established": "Wiadomość sygnalizacyjna nie może zostać wysłana, ponieważ połączenie nie jest ustanowione",
+    "You can not close the session because you are disconnected": "Nie możesz zamknąć sesji, ponieważ jesteś rozłączony"
 }

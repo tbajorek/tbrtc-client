@@ -10,13 +10,15 @@ class SentData {
      * @param {FileInfo} info Information about sending file
      * @param {number} chunkNumber Total number of chunks of sending file
      * @param {number} currentChunk Number of current sent chunk
+     * @param {number} size Original size of current sent chunk
      * @param {string|null} chunk Chunk data
      */
-    constructor(info, chunkNumber, currentChunk, chunk = null) {
+    constructor(info, chunkNumber, currentChunk, size, chunk = null) {
         this._info = info;
-        this._chunk = chunk;
         this._chunkNumber = chunkNumber;
         this._currentChunk = currentChunk;
+        this._size = size;
+        this._chunk = chunk;
     }
 
     /**
@@ -70,8 +72,8 @@ class SentData {
      * @readonly
      * @type {number}
      */
-    get length() {
-        return this._chunk.length;
+    get size() {
+        return this._size;
     }
 
     /**
@@ -104,7 +106,7 @@ class SentData {
      */
     static fromString(inputString) {
         const object = JSON.parse(inputString);
-        return new SentData(FileInfo.fromJSON(object._info), object._chunkNumber, object._currentChunk, object._chunk);
+        return new SentData(FileInfo.fromJSON(object._info), object._chunkNumber, object._currentChunk, object._size, object._chunk);
     }
 }
 

@@ -136,6 +136,14 @@ class Stream
         return snapshot;
     }
 
+    get hasAudio() {
+        return this.audio.tracks.length > 0;
+    }
+
+    get hasVideo() {
+        return this.video.tracks.length > 0;
+    }
+
     /**
      * Object with data of audio part of the stream
      *
@@ -166,7 +174,7 @@ class Stream
              */
             get volume() {
                 if(parent._volume === null || parent._volume.stopped) {
-                    parent._volume = new Volume(parent._stream);
+                    parent._volume = new Volume(parent);
                 }
                 return parent._volume;
             },

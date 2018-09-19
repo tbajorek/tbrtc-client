@@ -1,4 +1,6 @@
 import ValueChecker from 'tbrtc-common/utilities/ValueChecker';
+import readableFileSize from "tbrtc-common/utilities/readableFileSize";
+import roundFloatNumbers from "tbrtc-common/utilities/roundFloatNumbers";
 
 /**
  * Statistics about sending files
@@ -56,7 +58,7 @@ class DataStats {
         this._maxSpeed = Math.max(this.currentSpeed, this._maxSpeed);
         this._currentChunk = currentChunk;
         this._sentBytes += currentSentBytes;
-        this._percent = Math.round(this._sentBytes / this._fileSize);
+        this._percent = roundFloatNumbers(this._sentBytes / this._fileSize * 100, 2).toFixed(0);
     }
 
     /**
@@ -112,6 +114,28 @@ class DataStats {
      */
     get maxSpeed() {
         return this._maxSpeed;
+    }
+
+    /**
+     * Human-readable file size with two precision numbers
+     *
+     * @property
+     * @readonly
+     * @type {string}
+     */
+    get readableFileSize() {
+        return readableFileSize(this.fileSize);
+    }
+
+    /**
+     * Human-readable size of sent part of file with two precision numbers
+     *
+     * @property
+     * @readonly
+     * @type {string}
+     */
+    get readableSentSize() {
+        return readableFileSize(this._sentBytes);
     }
 
     /**

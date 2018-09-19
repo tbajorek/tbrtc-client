@@ -12,6 +12,7 @@ class Volume {
      * @param {Stream} stream Input stream
      */
     constructor(stream) {
+        console.log(stream);
         const compatibility = Information.supported.webAudio;
         if (!compatibility.basic) {
             throw new FunctionalityNotSupported('WebAudio');
@@ -34,7 +35,7 @@ class Volume {
         this._gainNode.connect(this._processor);
         this._processor.connect(this._audioContext.destination);
 
-        this._processor.addEventListener('audioprocess', this._onAudioProcessHandler);
+        this._processor.addEventListener('audioprocess', this._onAudioProcessHandler.bind(this));
     }
 
     /**
@@ -88,7 +89,7 @@ class Volume {
         this._gainNode.disconnect();
         this._processor.disconnect();
         this._lastClip = 0;
-        this._processor.removeEventListener('audioprocess', this._onAudioProcessHandler);
+        this._processor.removeEventListener('audioprocess', this._onAudioProcessHandler.bind(this));
     }
 
     /**
@@ -135,18 +136,18 @@ class Volume {
         const clippingTime = 800;
 
         const values = event.inputBuffer.getChannelData(0);
-        const currentValue = Math.sqrt(_.reduce(values, function (memory, value) {
+        const currentValue = Math.sqrt(_.reduce(values, (memory, value) => {
             return memory + value * value;
         }, 0) / values.length);
         this._value = Math.max(currentValue,this._value * averageFactor);
-        let maxVal = _.max(values, function (value) {
+        let maxVal = _.max(values, (value) => {
             return Math.abs(value);
         });
         if (maxVal >= clipLevel || (this._lastClip + clippingTime) < window.performance.now()) {
-            context._clipped = true;
+            this._clipped = true;
             this._lastClip = window.performance.now();
         } else {
-            context._clipped = false;
+            this._clipped = false;
         }
     }
 }

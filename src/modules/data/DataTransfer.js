@@ -8,7 +8,7 @@ import FileInput from "../dom/FileInput";
 import FileInputAlreadyExists from "../../exceptions/InputFileAlreadyExists";
 import FilesNotChosen from "../../exceptions/FilesNotChosen";
 import FileIsEmpty from "../../exceptions/FileIsEmpty";
-import {File as TransferFile} from "./File";
+import TransferFile from "./TransferFile";
 import SentData from "./SentData";
 import DataChannelNotOpened from "../../exceptions/DataChannelNotOpened";
 import DataStats from "./DataStats";
@@ -47,7 +47,7 @@ class DataTransfer extends ClassWithEvents
     /**
      * It adds passed file input to be observed
      *
-     * @param {FileInput} input File to be observed
+     * @param {FileInput} input TransferFile to be observed
      */
     addFileInput(input) {
         ValueChecker.check({ input }, {
@@ -132,8 +132,10 @@ class DataTransfer extends ClassWithEvents
             });
             timestamp = (new Date()).getTime();
             this.dispatch('send.file.started', {
+                sender: this._pc.remoteUser,
+                receiver: this._pc.localUser,
                 channelId: channel.label,
-                file
+                file,
             });
             file.chunkify();
         };
@@ -159,12 +161,12 @@ class DataTransfer extends ClassWithEvents
                 const currentTimestamp = (new Date()).getTime();
                 if(channel === null || channel.readyState !== 'open') {
                     this.dispatch('data.error.occured', {
-                        error: new DataChannelNotOpened(channel.label, data.currentChunk, data.info.name, this._pc.remoteUser.name),
-                        channelId: channel.label,
+                        error: new DataChannelNotOpened(channel ? channel.label : null, data.currentChunk, data.info.name, this._pc.remoteUser.name),
+                        channelId: channel ? channel.label : null,
                     });
                 }
-                const size = this._sendSingleChunk(channel, data);
-                stats.update(size, currentTimestamp - timestamp, data.currentChunk);
+                this._sendSingleChunk(channel, data);
+                stats.update(data.size, currentTimestamp - timestamp, data.currentChunk);
                 this.dispatch('send.file.updated', {
                     channelId: channel.label,
                     file,
@@ -187,7 +189,6 @@ class DataTransfer extends ClassWithEvents
      *
      * @param {RTCDataChannel} channel
      * @param {SentData} data
-     * @returns {number}
      * @private
      */
     _sendSingleChunk(channel, data) {
@@ -195,7 +196,6 @@ class DataTransfer extends ClassWithEvents
             return 0;
         }
         channel.send(JSON.stringify(data));
-        return data.chunk.length;
     }
 
     /**
@@ -248,26 +248,26 @@ class DataTransfer extends ClassWithEvents
                 file.setInfo(data.info);
                 this.dispatch('receive.file.started', {
                     sender: this._pc.remoteUser,
+                    receiver: this._pc.localUser,
                     channelId,
                     file,
                 });
             }
             file.addChunk(data);
             const currentTimestamp = (new Date()).getTime();
-            stats.update(data.length, currentTimestamp - timestamp, data.currentChunk);
+            console.log(data);
+            stats.update(data.size, currentTimestamp - timestamp, data.currentChunk);
             this.dispatch('receive.file.updated', {
                 channelId,
                 data,
                 file,
                 stats,
-                sender: this._pc.remoteUser,
             });
             timestamp = currentTimestamp;
             if(file.completed) {
                 this.dispatch('receive.file.finished', {
                     channelId,
                     file,
-                    sender: this._pc.remoteUser,
                 });
                 channel.close();
                 channel = null;

@@ -65,6 +65,7 @@ class PeerConnection extends ClassWithEvents {
         if(localStream !== null) {
             this.addLocalStream(localStream);
         }
+        this._freshStream = false;
         this.dispatch('initialized', { pc: this._pc, localStream });
     }
 
@@ -98,8 +99,13 @@ class PeerConnection extends ClassWithEvents {
                 "instanceof": Stream
             }
         });
-        stream.tracks.forEach(track => {
-            this._pc.addTrack(track, stream.stream);
+        this._freshStream = true;
+        this._localStream = stream;
+        const senders = this._pc.getSenders();console.log('senders', senders);
+        stream.tracks.forEach(track => {console.log('analyzed track', track);
+            if(!senders.find(sender => sender.track && sender.track.id === track.id)) {
+                this._pc.addTrack(track, stream.stream);console.log('track.added');
+            }
         });
         this.dispatch('lstream.added', { stream });
     }
@@ -141,16 +147,20 @@ class PeerConnection extends ClassWithEvents {
         this._dataTransfer.addFileInput(fileInput);
     }
 
+    _isSdpEmpty(sdp) {
+        return sdp === null || sdp.sdp === '';
+    }
+
     /**
      * It creates an offer to start connection with remote user
      */
-    createOffer() {
+    createOffer() {console.log('create offer');
         this._firstNegotiation = true;
         if (this._pc === null) {
             this.dispatch('error', { type: PeerConnection.ERRORS.NOT_CALLED, error: this._notCalledError() });
             return;
         }
-        if (this._pc.localDescription !== null && !this._dataTransfer.hasFreshChannels()) {
+        if (!this._isSdpEmpty(this._pc.localDescription) && !(this._dataTransfer.hasFreshChannels() || this._freshStream)) {
             this.dispatch('error', {
                 type: PeerConnection.ERRORS.OFFER_ALREADY_CREATED,
                 error: new Error(
@@ -349,11 +359,11 @@ class PeerConnection extends ClassWithEvents {
      * @param {Event} event Event data
      * @private
      */
-    _onNegotiationNeeded(event) {
-        if(!this._firstNegotiation && this._pc.iceConnectionState === 'connected') {
+    _onNegotiationNeeded(event) {console.log('negotiation needed', this._firstNegotiation, this._pc.iceConnectionState, this._freshStream);
+        if((this._firstNegotiation && this._freshStream) || ['connected', 'completed'].indexOf(this._pc.iceConnectionState) >= 0 && this._dataTransfer.hasFreshChannels()) {
             this.createOffer();
         }
-        this._firstNegotiation = false;
+        this._freshStream = false;
     }
 
     /**
@@ -417,7 +427,7 @@ class PeerConnection extends ClassWithEvents {
      * @param {RTCTrackEvent} event Event data
      * @private
      */
-    _onRemoteTrackAdded(event) {
+    _onRemoteTrackAdded(event) {console.log('new remote track', event.streams);window.remoteStream = event.streams[0];
         this.dispatch('rstream.added', { stream: new Stream(event.streams[0]) });
     }
 

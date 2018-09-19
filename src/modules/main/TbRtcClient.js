@@ -1,7 +1,8 @@
 import 'webrtc-adapter/out/adapter';
 import merge from 'deepmerge';
 import Translation from 'tbrtc-common/translate/Translation';
-import { User as UserModel } from 'tbrtc-common/model/User';
+import {Communication} from 'tbrtc-common/messages/Communication';
+import {User as UserModel} from 'tbrtc-common/model/User';
 import ValueChecker from 'tbrtc-common/utilities/ValueChecker';
 import ModProviderNotFound from '../../exceptions/ModProviderNotFound';
 import defaultConfig from './default.config';
@@ -13,24 +14,24 @@ import Constraints from '../config/Constraints';
 import Information from '../media/Information';
 import Devices from '../media/Devices';
 import DomManager from '../dom/DomManager';
-import Stream from "../media/Stream";
-import AnyError from "./AnyError";
-import RtcConnectionNotInitialized from "../../exceptions/RtcConnectionNotInitialized";
-import UserIsOffline from "../../exceptions/UserIsOffline";
-import UserHasSession from "../../exceptions/UserHasSession";
-import MediaRequestIsDone from "../../exceptions/MediaRequestIsDone";
-import FileInput from "../dom/FileInput";
-import PeerConnectionNotInitialized from "../../exceptions/PeerConnectionNotInitialized";
+import Stream from '../media/Stream';
+import AnyError from './AnyError';
+import RtcConnectionNotInitialized from '../../exceptions/RtcConnectionNotInitialized';
+import UserIsOffline from '../../exceptions/UserIsOffline';
+import UserHasSession from '../../exceptions/UserHasSession';
+import MediaRequestIsDone from '../../exceptions/MediaRequestIsDone';
+import FileInput from '../dom/FileInput';
+import PeerConnectionNotInitialized from '../../exceptions/PeerConnectionNotInitialized';
 
 class TbRtcClient {
     constructor(userConfig = {}) {
         this.providers = {
             MediaProvider: UserMedia,
             Signaling: Socket,
-            MediaElement: MediaElement,
+            MediaElement,
             Connection: MultiConnection,
             ConstraintFilter: Constraints,
-            Information: Information,
+            Information,
             DevicesList: Devices,
         };
         this._instances = {};
@@ -39,70 +40,111 @@ class TbRtcClient {
         this._localVideo = null;
         this._remoteVideo = null;
         this._localStream = null;
+        this._remoteStream = null;
         this._sessionId = null;
         this._baseHandlers = {
-            onLoadLocalVideo: () => {},
-            onLoadRemoteVideo: () => {},
-            onConnected: (user) => {},
+            onInitialized: () => {
+                if (this._shouldStart) {
+                    this.start();
+                }
+            },
+            onLoadLocalVideo: () => {
+            },
+            onLoadRemoteVideo: () => {
+            },
+            onConnected: (user) => {
+            },
             onDisconnected: () => {
                 this._baseHandlers.onSessionUnavailable();
+                this._closeRtcConnection();
             },
-            onSessionAvailable: (sessionId) => {},
-            onSessionCreated: (sessionId) => {
+            onSessionAvailable: (e) => {
+            },
+            onSessionCreated: (e) => {
+                const {sessionId} = e.data;
+                this._sessionId = sessionId;
                 this._initRtcConnection(sessionId);
                 this._baseHandlers.onSessionAvailable(sessionId);
             },
-            onSessionRequested: (request) => {},
-            onSessionJoined: (session) => {
+            onSessionRequested: (e) => {
+            },
+            onSessionJoined: (e) => {
+                const {session} = e.data;
+                this._sessionId = session.id;
+                this._sessionMembers = session.members;
                 this._initRtcConnection(session.id);
-                session.members.forEach(member => {
-                    if(member.id !== this._currentUser.id) {
-                        this._instances.Connection.addConnection(member);
-                    }
-                });
-                this._startRtcProcess();
                 this._baseHandlers.onSessionAvailable(session.id);
             },
-            onSessionNewUser: (user) => {
-                this._instances.Connection.addConnection(user);
+            onSessionNewUser: (e) => {
+                if(!!this._instances.Connection) {
+                    const {user} = e.data;
+                    this._instances.Connection.addConnection(user);
+                    this._instances.Connection.addLocalStream(this._localStream);
+                }
             },
-            onSessionRejected: (data) => {},
-            onSessionRejectedMe: (data) => {},
-            onRequestStopped: (data) => {},
-            onChatMessage: () => {},
+            onSessionRejected: (e) => {
+            },
+            onSessionRejectedMe: (e) => {
+            },
+            onRequestStopped: (e) => {
+            },
+            onChatMessage: () => {
+            },
             onSessionLeft: () => {
                 this._closeRtcConnection();
                 this._baseHandlers.onSessionUnavailable();
             },
-            onSessionUserLeft: (data) => {
-                this._instances.Connection.removeConnection(data.user);
+            onSessionUserLeft: (e) => {
+                this._instances.Connection.removeConnection(e.data.user);
             },
             onSessionClosed: () => {
                 this._closeRtcConnection();
                 this._baseHandlers.onSessionUnavailable();
             },
-            onSessionUnavailable: () => {},
-            onSuccessMessage: (e) => {},
-            onErrorMessage: (e) => {},
-            onFileTransferStart: (e) => {},
-            onFileTransferProgress: (e) => {},
-            onFileSent: (e) => {},
-            onFileReceived: (e) => {}
+            onSessionUnavailable: () => {
+            },
+            onUserCommunication: () => {
+            },
+            onSuccessMessage: (e) => {
+            },
+            onErrorMessage: (e) => {
+            },
+            onFileTransferStart: (e) => {
+            },
+            onFileTransferProgress: (e) => {
+            },
+            onFileSent: (e) => {
+            },
+            onFileReceived: (e) => {
+            },
+            onReady: () => {
+            },
+            onP2pStateChange: (e) => {}
         };
-        this._onLoadLocalVideo = () => {};
-        this._onLoadRemoteVideo = () => {};
-        this._isInitialized = () => {};
-        this._onAnyError = (error) => {};
+        this._onLoadLocalVideo = () => {
+        };
+        this._onLoadRemoteVideo = () => {
+        };
+        this._onAnyError = (error) => {
+        };
         this._displayError = this._config.displayError;
         this._mediaRequested = false;
         this._initialized = false;
+        this._shouldStart = false;
+        this._anyMedia = false;
+        this._localVideoBound = false;
+        this._remoteVideoBound = false;
         this._observedFileInputs = {};
         this._init();
     }
 
+    get hasSignalingConnection() {
+        return !!this._instances.Signaling && this._instances.Signaling.hasSignalingConnection;
+    }
+
     _deviceNotFoundError(dtype) {
         const message = Translation.instance._('Any device type {dtype} has not found', {
-            dtype
+            dtype,
         });
         this._displayError(message);
     }
@@ -110,12 +152,13 @@ class TbRtcClient {
     _initRtcConnection(sessionId) {
         this._sessionId = sessionId;
         this._instances.Connection = new this.providers.Connection(this._config, this._sessionId, this._currentUser, this._localStream);
-        for(const fileInput of Object.values(this._observedFileInputs)) {
+        console.log(this._localStream);
+        for (const fileInput of Object.values(this._observedFileInputs)) {
             this._instances.Connection.addFileInput(fileInput);
         }
 
         this.on('Connection', 'error', (event) => {
-            this._onAnyError(new AnyError(event.data.error.message, 'tbrtc-client > Connection > error'))
+            this._onAnyError(new AnyError(event.data.error.message, 'tbrtc-client > Connection > error'));
         });
 
         this.on('Connection', 'ice.found', (event) => {
@@ -128,9 +171,10 @@ class TbRtcClient {
             this._instances.Signaling.sendSdp(event.data.sdp, event.data.remoteUser);
         });
         this.on('Connection', 'rstream.added', (event) => {
-            this._remoteVideo = new MediaElement(this._domManager.remoteVideo, event.data.stream, { autoInit: true });
-            this._remoteVideo.onLoad = this._onLoadLocalVideo;
-            this._remoteVideo.init();
+            this._remoteStream = event.data.stream;
+            if (this._config.autoBindingMedia || this._remoteVideoBound) {
+                this.bindWithRemoteVideo();
+            }
         });
         this.on('Signaling', 'ice.received', (event) => {
             this._instances.Connection.addIceCandidate(event.data.ice, event.data.ice.sender.id);
@@ -138,33 +182,49 @@ class TbRtcClient {
         this.on('Signaling', 'sdp.received', (event) => {
             this._instances.Connection.setRemoteDescription(event.data.sdp, event.data.sdp.sender.id);
         });
+        this.on('Connection', 'istate.changed', (event) => {
+            this._baseHandlers.onP2pStateChange({...event.data});
+        });
         // data transfer
         this.on('Connection', 'data.error.occured', (error) => {
             this._onAnyError(new AnyError(error.message, 'tbrtc-client > Connection > data error'));
-            this._baseHandlers.onFileTransferStart({...event, type: 'sent'});
         });
         this.on('Connection', 'send.file.started', (event) => {
-            this._baseHandlers.onFileTransferStart({...event, type: 'sent'});
+            this._baseHandlers.onFileTransferStart({...event.data, type: 'sent'});
         });
         this.on('Connection', 'receive.file.started', (event) => {
-            this._baseHandlers.onFileTransferStart({...event, type: 'received'});
+            this._baseHandlers.onFileTransferStart({...event.data, type: 'received'});
         });
         this.on('Connection', 'send.file.updated', (event) => {
-            this._baseHandlers.onFileTransferProgress({...event, type: 'sent'});
+            this._baseHandlers.onFileTransferProgress({...event.data, type: 'sent'});
         });
         this.on('Connection', 'receive.file.updated', (event) => {
-            this._baseHandlers.onFileTransferProgress({...event, type: 'received'});
+            this._baseHandlers.onFileTransferProgress({...event.data, type: 'received'});
         });
         this.on('Connection', 'send.file.finished', (event) => {
-            this._baseHandlers.onFileSent(event);
+            this._baseHandlers.onFileSent(event.data);
         });
         this.on('Connection', 'receive.file.finished', (event) => {
-            this._baseHandlers.onFileReceived(event);
+            this._baseHandlers.onFileReceived(event.data);
         });
+
+        if (Array.isArray(this._sessionMembers)) {
+            this._sessionMembers.forEach((member) => {
+                if (member.id !== this._currentUser.id) {
+                    this._instances.Connection.addConnection(member);
+                }
+            });
+            this._sessionMembers = null;
+            this._startRtcProcess();
+        }
+
+        if (!this._mediaRequested) {
+            this._mediaRequest();
+        }
     }
 
     _startRtcProcess() {
-        if(this._isRtcConnection()) {
+        if (this._isRtcConnection()) {
             this._instances.Connection.createOffer(this._config.offerOptions);
         } else {
             this._onAnyError(new AnyError((new PeerConnectionNotInitialized()).message, 'tbrtc-client > main > error'));
@@ -172,7 +232,7 @@ class TbRtcClient {
     }
 
     _closeRtcConnection() {
-        if(typeof this._instances.Connection !== 'undefined' && this._isRtcConnection()) {
+        if (typeof this._instances.Connection !== 'undefined' && this._isRtcConnection()) {
             this._instances.Connection.close();
             this._instances.Connection = undefined;
             this._sessionId = null;
@@ -184,29 +244,32 @@ class TbRtcClient {
     }
 
     _init() {
-        if(!this._isOnline()) {
+        if (!this._isOnline()) {
             this._onAnyError(new AnyError((new UserIsOffline()).message, 'tbrtc-client > main > error'));
         }
         this.providers.MediaProvider.debug = this._config.debug;
         this.providers.DevicesList.showWarnings = this._config.debug;
-        this.providers.DevicesList.load(devices => {
-            if(typeof this._config.mediaConstraints.video !== 'undefined' && !devices.videoInput.length) {
+        this.providers.DevicesList.load((devices) => {
+            if (typeof this._config.mediaConstraints.video !== 'undefined' && !devices.videoInput.length) {
                 this._deviceNotFoundError('video');
             }
-            if(typeof this._config.mediaConstraints.audio !== 'undefined' && !devices.audioInput.length) {
+            if (typeof this._config.mediaConstraints.audio !== 'undefined' && !devices.audioInput.length) {
                 this._deviceNotFoundError('audio');
             }
             this._domManager = new DomManager(this._config);
             this._initSignaling();
-            if(this._config.currentUser !== null) {
+            if (this._config.currentUser !== null) {
                 this.setCurrentUser(UserModel.fromJSON(this._config.currentUser));
-            } else {
+            } else if (!(this._currentUser instanceof UserModel)) {
                 this._currentUser = null;
             }
             this._initialized = true;
-            this._isInitialized();
+            this._baseHandlers.onInitialized();
             this._eventSignalingBindings();
         }, (error) => {
+            if(this._config.debug) {
+                console.error(error);
+            }
             this._onAnyError(error.message, 'tbrtc-client > main > device list error');
         });
     }
@@ -224,7 +287,7 @@ class TbRtcClient {
         this.on('Signaling', 'session.confirmed', this._baseHandlers.onSessionNewUser);
         this.on('Signaling', 'session.joined', this._baseHandlers.onSessionJoined);
         this.on('Signaling', 'session.rejected', (event) => {
-            if(event.data.user.id === this.currentUser.id) {
+            if (event.data.user.id === this.currentUser.id) {
                 this._baseHandlers.onSessionRejectedMe(event);
             } else {
                 this._baseHandlers.onSessionRejected(event);
@@ -235,6 +298,7 @@ class TbRtcClient {
         this.on('Signaling', 'session.closed', this._baseHandlers.onSessionClosed);
         this.on('Signaling', 'session.request.stopped', this._baseHandlers.onRequestStopped);
         this.on('Signaling', 'chat.message', this._baseHandlers.onChatMessage);
+        this.on('Signaling', 'user.communication', this._baseHandlers.onUserCommunication);
 
         this.on('Signaling', 'result.success', this._baseHandlers.onSuccessMessage);
         this.on('Signaling', 'result.error', this._baseHandlers.onErrorMessage);
@@ -242,33 +306,55 @@ class TbRtcClient {
             this._onAnyError(new AnyError(event.data.message.content, 'tbrtc-client > Signaling > result.error'));
         });
         this.on('Signaling', 'signaling.error', (event) => {
-            this._onAnyError(new AnyError(event.data.error.message, 'tbrtc-client > Connection > signaling error', { error: event.data.error }));
+            this._onAnyError(new AnyError(event.data.error.message, 'tbrtc-client > Connection > signaling error', {error: event.data.error}));
         });
+        this._baseHandlers.onReady();
     }
 
     setCurrentUser(currentUser) {
-        ValueChecker.check({ currentUser }, {
-            "currentUser": {
-                "required": true,
-                "typeof": 'object',
-                "instanceof": UserModel
-            }
+        ValueChecker.check({currentUser}, {
+            currentUser: {
+                required: true,
+                typeof: 'object',
+                instanceof: UserModel,
+            },
         });
         this._currentUser = currentUser;
     }
 
-    start(mediaConstraints) {
-        this._config = {...this.config, mediaConstraints};
-        if(typeof this._instances.Signaling === 'undefined') {
-            this._initSignaling();
-            //this._eventSignalingBindings();
+    start(mediaConstraints = null) {
+        if (mediaConstraints) {
+            this._config = {...this.config, mediaConstraints};
         }
-        this._mediaRequest();
+        this._anyMedia = Object.values(this._config.mediaConstraints).some(constraint => constraint !== false);
+        if (this._initialized) {
+            if (typeof this._instances.Signaling === 'undefined') {
+                this._initSignaling();
+            }
+            if (this._config.signaling.autoConnection) {
+                this.connectToServer();
+            }
+            this._shouldStart = false;
+        } else {
+            console.warn('Not yet initialized before starting');
+            this._shouldStart = true;
+            this._init();
+
+        }
+    }
+
+    sendDataToUser(data, userId) {
+        this._instances.Signaling.sendMessage(new Communication(new UserModel(userId, null, null, null), this.currentUser, data));
     }
 
     connectToServer() {
-        if(this._instances.Signaling.state === this._instances.Signaling.states.DISCONNECTED) {
+        if (this._instances.Signaling.state === this._instances.Signaling.states.DISCONNECTED) {
             this._instances.Signaling.initConnection(this._currentUser);
+        } else {
+            const message = Translation.instance._('Signaling connection can not be initialized in its current state: {cstate}', {
+                cstate: this._instances.Signaling.state,
+            });
+            this._onAnyError(new AnyError(new Error(message), 'tbrtc-client > main > connection error'));
         }
     }
 
@@ -285,11 +371,19 @@ class TbRtcClient {
     }
 
     isInitialized(callback) {
-        this._isInitialized = TbRtcClient._checkCallback(callback);
+        this._addEventHandler('onInitialized', callback);
+    }
+
+    isReady(callback) {
+        this._addEventHandler('onReady', callback);
     }
 
     isConnected(callback) {
         this._addEventHandler('onConnected', callback, event => event.data.user);
+    }
+
+    isUserCommunication(callback) {
+        this._addEventHandler('onUserCommunication', callback, event => event.data);
     }
 
     isSessionAvailable(callback) {
@@ -332,6 +426,10 @@ class TbRtcClient {
         this._addEventHandler('onDisconnected', callback);
     }
 
+    isP2pStateChange(callback) {
+        this._addEventHandler('onP2pStateChange', callback);
+    }
+
     isSessionLeft(callback) {
         this._addEventHandler('onSessionLeft', callback);
     }
@@ -349,44 +447,49 @@ class TbRtcClient {
     }
 
     isFileTransferStart(callback) {
-        this._addEventHandler('onFileTransferStart', callback, event => event.data);
+        this._addEventHandler('onFileTransferStart', callback);
     }
 
     isFileTransferProgress(callback) {
-        this._addEventHandler('onFileTransferProgress', callback, event => event.data);
+        this._addEventHandler('onFileTransferProgress', callback);
     }
 
     isFileSent(callback) {
-        this._addEventHandler('onFileSent', callback, event => event.data);
+        this._addEventHandler('onFileSent', callback);
     }
 
     isFileReceived(callback) {
-        this._addEventHandler('onFileReceived', callback, event => event.data);
+        this._addEventHandler('onFileReceived', callback);
     }
 
     addFileInput(fileInput, inputId = null) {
-        ValueChecker.check({ fileInput }, {
-            "fileInput": {
-                "required": true,
-                "typeof": 'object',
-                "instanceof": HTMLInputElement
-            }
+        ValueChecker.check({fileInput}, {
+            fileInput: {
+                required: true,
+                typeof: 'object',
+                instanceof: HTMLInputElement,
+            },
         });
-        if(inputId === null && typeof fileInput.id !== 'undefined') {
+        if (inputId === null && typeof fileInput.id !== 'undefined') {
             inputId = fileInput.id;
-        } else if(inputId !== null && typeof fileInput.id === 'undefined') {
+        } else if (inputId !== null && typeof fileInput.id === 'undefined') {
             fileInput.id = inputId;
         }
         const file = new FileInput(fileInput, this._config.filesConfig);
         this._observedFileInputs[inputId] = file;
-        if(this._isRtcConnection()) {
+        if (this._isRtcConnection()) {
             this._instances.Connection.addFileInput(file);
         }
         return file;
     }
 
+    getObservedFileInput(inputId) {
+        const file = this._observedFileInputs[inputId];
+        return !!file ? file: null;
+    }
+
     sendFiles(files = null, remoteUserId = null) {
-        if(!this._isRtcConnection()) {
+        if (!this._isRtcConnection()) {
             throw new RtcConnectionNotInitialized('sendFiles');
         }
         return this._instances.Connection.sendFiles(files, remoteUserId);
@@ -405,13 +508,13 @@ class TbRtcClient {
         const old = this._baseHandlers[eventName];
         this._baseHandlers[eventName] = (params) => {
             const newParams = transformParams(params);
-            old.call(this, newParams);
+            old.call(this, params);
             TbRtcClient._checkCallback(callback)(newParams);
         };
     }
 
     startSession() {
-        if(!this._isRtcConnection()) {
+        if (!this._isRtcConnection()) {
             this._instances.Signaling.createNewSession();
         } else {
             this._onAnyError(new AnyError(new UserHasSession(this.sessionId), 'tbrtc-client > main > session error'));
@@ -435,59 +538,82 @@ class TbRtcClient {
     }
 
     closeSession() {
-        this._instances.Signaling.closeSession();
+        console.log('closing', this._instances.Signaling.hasSignalingConnection, this._instances.Signaling.isConnectionState(WebSocket.OPEN));
+        if(this._instances.Signaling.hasSignalingConnection && this._instances.Signaling.isConnectionState(WebSocket.OPEN)) {
+            this._instances.Signaling.closeSession();
+        } else {
+            console.log(Translation.instance._('You can not close the session because you are disconnected'));
+        }
     }
 
     disconnect() {
-        if(this._sessionId) {
+        if (this._sessionId) {
             this.leaveSession();
             this._closeRtcConnection();
         }
-        this._instances.Signaling.close();
-        this._instances.Signaling = undefined;
+        if (this._instances.Signaling) {
+            this._instances.Signaling.close();
+            this._instances.Signaling = undefined;
+        }
+        this._initialized = false;
+        this._anyMedia = false;
+    }
+
+    bindWithLocalVideo() {
+        if (this._localStream !== null) {
+            this._localVideo = new MediaElement(this._domManager.localVideo, this._localStream, {autoInit: true});
+            this._localVideo.onLoad = this._onLoadLocalVideo;
+        }
+        this._localVideoBound = true;
+    }
+
+    bindWithRemoteVideo() {console.log('remote.bound', this._remoteStream);
+        if (this._remoteStream !== null) {
+            this._remoteVideo = new MediaElement(this._domManager.remoteVideo, this._remoteStream, {autoInit: true});
+            this._remoteVideo.onLoad = this._onLoadRemoteVideo;
+        }
+        this._remoteVideoBound = true;
     }
 
     _mediaRequest() {
         const context = this;
-        if(context._mediaRequested) {
+        if (context._mediaRequested) {
             this._onAnyError(new AnyError(new MediaRequestIsDone(), 'tbrtc-client > main > media error'));
         } else {
             const oldSuccessCallback = this.providers.MediaProvider.onSuccess;
             this.providers.MediaProvider.onSuccess = (stream) => {
                 context._mediaRequested = true;
-                this._localStream = stream;
-                context._localVideo = new MediaElement(context._domManager.localVideo, stream, { autoInit: true });
-                context._localVideo.onLoad = this._onLoadLocalVideo;
-                context._localVideo.init();
-                if(context._config.signaling.autoConnection) {
-                    context.connectToServer();
-                }
+                context._localStream = stream;console.log('media request1', context._localStream, context._instances.Connection);
+                if(!!context._instances.Connection) {
+                    context._instances.Connection.addLocalStream(stream);
+                }console.log('media request2', context._localStream);
+                if (context._config.autoBindingMedia || context._localVideoBound) {
+                    context.bindWithLocalVideo.bind(context)();
+                }console.log('media request3', context._localStream);
                 oldSuccessCallback(stream);
             };
-            const oldErrorCallback = this.providers.MediaProvider.onError;
-            this.providers.MediaProvider.onError = (error) => {
+            const oldErrorCallback = context.providers.MediaProvider.onError;
+            this.providers.MediaProvider.onError = (error) => {console.error(this.providers.MediaProvider.debug, error);
                 context._onAnyError(new AnyError(error.message, 'tbrtc-client > MediaProvider > onError'));
                 oldErrorCallback(error);
             };
         }
-        const anyMedia = Object.values(this._config.mediaConstraints).some(constraint => constraint !== false);
-        if(this._initialized && anyMedia) {
+
+        if (this._initialized && this._anyMedia) {
             this.providers.MediaProvider.get(
                 this.providers.ConstraintFilter.filterAll(
-                    this._config.mediaConstraints
-                )
+                    this._config.mediaConstraints,
+                ),
             );
-        } else if(this._config.signaling.autoConnection) {
-            this.connectToServer();
         }
     }
 
     on(moduleName, eventName, handler) {
-        ValueChecker.check({ handler }, {
-            "handler": {
-                "required": true,
-                "typeof": 'function'
-            }
+        ValueChecker.check({handler}, {
+            handler: {
+                required: true,
+                typeof: 'function',
+            },
         });
         switch (moduleName) {
             case 'MediaProvider':
@@ -498,14 +624,14 @@ class TbRtcClient {
                 }
                 break;
             case 'VideoElement':
-                if(eventName === 'onLocalLoad') {
+                if (eventName === 'onLocalLoad') {
                     this._onLoadLocalVideo = handler;
-                } else if(eventName === 'onRemoteLoad') {
+                } else if (eventName === 'onRemoteLoad') {
                     this._onLoadLocalVideo = handler;
                 }
                 break;
             default:
-                if(typeof this._instances[moduleName] === 'undefined') {
+                if (typeof this._instances[moduleName] === 'undefined') {
                     throw new ModProviderNotFound(moduleName, eventName);
                 }
                 this._instances[moduleName].on(eventName, handler);
@@ -513,11 +639,11 @@ class TbRtcClient {
     }
 
     set displayError(callback) {
-        ValueChecker.check({ callback }, {
-            "callback": {
-                "required": true,
-                "typeof": 'function'
-            }
+        ValueChecker.check({callback}, {
+            callback: {
+                required: true,
+                typeof: 'function',
+            },
         });
         this._displayError = callback;
     }
@@ -539,14 +665,25 @@ class TbRtcClient {
     }
 
     get localStream() {
-        if(this.localVideo === null) {
+        if (this.localVideo === null) {
             return null;
         }
         return this._localVideo.stream;
     }
 
+    get remoteStream() {
+        if (this.localVideo === null) {
+            return null;
+        }
+        return this._remoteVideo.stream;
+    }
+
     get sessionId() {
         return this._sessionId;
+    }
+
+    get domManager() {
+        return this._domManager;
     }
 
     get observedFileInputs() {
@@ -554,11 +691,11 @@ class TbRtcClient {
     }
 
     static _checkCallback(callback) {
-        ValueChecker.check({ callback }, {
-            "callback": {
-                "required": true,
-                "typeof": 'function'
-            }
+        ValueChecker.check({callback}, {
+            callback: {
+                required: true,
+                typeof: 'function',
+            },
         });
         return callback;
     }

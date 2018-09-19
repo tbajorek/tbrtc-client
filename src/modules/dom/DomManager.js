@@ -13,8 +13,8 @@ class DomManager {
      */
     constructor(config) {
         this._config = Object.assign({}, config);
-        this._findVideo('local');
-        this._findVideo('remote');
+        this.findVideo('local');
+        this.findVideo('remote');
     }
 
     /**
@@ -23,9 +23,9 @@ class DomManager {
      * @param {string} type One of video element types: 'local' or 'remote'
      * @private
      */
-    _findVideo(type) {
+    findVideo(type) {
         let container = document,
-            found = null;
+        found = null;
         if (this._config[type + 'VideoContainer'] instanceof Element) {
             container = this._config[type + 'VideoContainer'];
         } else if (typeof this._config[type + 'VideoContainer'] === 'string') {
@@ -47,10 +47,31 @@ class DomManager {
             }
         }
         if (found === null) {
-            found = Video.createVideo(type);
+            //found = Video.createVideo(type);
         }
         this._config[type + 'VideoContainer'] = container;
         this._config[type + 'Video'] = found;
+    }
+
+    /**
+     * It sets the passed video element as local or remote
+     *
+     * @param {string} type Type of video: local or remote
+     * @param {HTMLVideoElement} videoElement Video element
+     */
+    setVideo(type, videoElement) {
+        ValueChecker.check({ type, videoElement }, {
+            "type": {
+                "typeof": 'string',
+                "inside": ['local', 'remote'],
+            },
+            "videoElement": {
+                "required": true,
+                "typeof": "object",
+                "instanceof": HTMLVideoElement
+            }
+        });
+        this._config[type + 'Video'] = videoElement;
     }
 
     /**

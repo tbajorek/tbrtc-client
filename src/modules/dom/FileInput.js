@@ -1,6 +1,6 @@
 import _ from 'underscore';
 import ClassWithEvents from "tbrtc-common/event/ClassWithEvents";
-import {File as TransportFile} from "../data/File";
+import TransportFile from "../data/TransferFile";
 
 /**
  * It wraps original file input represents as HTMLInputFile and adds necessary functionality
@@ -21,6 +21,7 @@ class FileInput extends ClassWithEvents {
         if(this._config.acceptedTypes !== null) {
             this._input.accept = this._config.acceptedTypes;
         }
+        this._input.setAttribute('multiple', this._config.multipleFiles);
         this._input.onchange = (e) => {
             this._files = _.map(e.target.files, (file) => {
                 return new TransportFile(this._config, file);
@@ -57,7 +58,7 @@ class FileInput extends ClassWithEvents {
      *
      * @property
      * @readonly
-     * @type {TransportFile[]}
+     * @type {TransferFile[]}
      */
     get files() {
         return this._files;

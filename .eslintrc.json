@@ -3,9 +3,10 @@
         "es6": true,
         "node": true
     },
-    "extends": "eslint:all",
+    "extends": "airbnb",
     "ecmaFeatures": {
         "experimentalObjectRestSpread": true,
+        "spread": true,
         "jsx": true
     },
     "plugins": [

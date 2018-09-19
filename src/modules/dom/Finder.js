@@ -10,7 +10,7 @@ class Finder {
      *
      * @param {string} query Given criteria of matching. It's the same like used in CSS-selectors.
      * @param {Element|null} parent Parent container
-     * @param {bool} first Flag if only first element or all should be returned
+     * @param {boolean} first Flag if only first element or all should be returned
      * @returns {Element[]|Element}
      */
     static find(query, parent = null, first = true) {

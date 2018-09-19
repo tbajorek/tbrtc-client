@@ -3,6 +3,7 @@ export default {
     localVideoContainer: null,
     remoteVideo: '#remoteVideo',
     remoteVideoContainer: null,
+    autoBindingMedia: true,
     locale: 'pl_PL',
     offerOptions: {
         offerToReceiveAudio: 1,
@@ -15,6 +16,10 @@ export default {
     signaling: {
         server: null,
         autoConnection: true,
+        debug: {
+            recvMessages: false,
+            sentMessages: false,
+        }
     },
     peerConfig: {
         iceServers: []
@@ -26,10 +31,12 @@ export default {
         hideInput: false,
         autoSending: true,
         acceptedTypes: null,
+        multiple: true,
         dataChannel: {
             ordered: true,
             reliable: true,
         },
+        latency: 200,
     },
     currentUser: null,
     debug: false,

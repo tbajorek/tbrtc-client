@@ -103,6 +103,7 @@ const Devices = {
     canEnumerate() {
         return navigator.mediaDevices && !!navigator.mediaDevices.enumerateDevices;
     },
+
     _errorLoad(e) {
         console.error('EnumDevicesError: '+e.message);
     },

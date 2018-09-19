@@ -35,6 +35,14 @@ class Socket extends AbstractSignaling
         });
     }
 
+    get hasSignalingConnection() {
+        return this._connection !== null;
+    }
+
+    get connectionState() {
+        return this.hasSignalingConnection ? this._connection.connectionState : null;
+    }
+
     _send(message) {
         if(typeof message !== 'string') {
             throw new BadParamType('message', 'modules/signaling/Socket._send', 'string');
@@ -47,7 +55,6 @@ class Socket extends AbstractSignaling
             this._closing = false;
             this._connection.close();
             this._connection = null;
-            this.dispatch('connection.closed');
         }
     }
 }

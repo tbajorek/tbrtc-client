@@ -56,7 +56,7 @@ class WebSocketClient {
             throw new BadParamType('callback', 'WebSocketWrapper.send', 'function');
         }
         if(this._ws.readyState !== WebSocket.OPEN) {
-            throw new WsWrongState('OPEN');
+            throw new WsWrongState('OPEN', this._ws.readyState);
         }
         this._ws.send(data, undefined, callback);
     }
@@ -90,6 +90,10 @@ class WebSocketClient {
      */
     get connection() {
         return this._ws;
+    }
+
+    get connectionState() {
+        return this._ws.readyState;
     }
 
     /**

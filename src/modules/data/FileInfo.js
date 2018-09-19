@@ -9,7 +9,7 @@ class FileInfo extends AbstractModel {
     /**
      * It sets basic information
      *
-     * @param {HTMLInputElement} file Original file input element
+     * @param {File} file Original file from input element
      * @param {string} fileId
      */
     constructor(file, fileId) {
@@ -33,7 +33,7 @@ class FileInfo extends AbstractModel {
     }
 
     /**
-     * File size in bytes
+     * Size of transferred file in bytes
      *
      * @property
      * @readonly

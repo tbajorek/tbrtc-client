@@ -1,0 +1,51 @@
+{
+  "presets": [
+    [
+      "env",
+      {
+        "modules": false
+      }
+    ],
+    "react",
+    "stage-0",
+    "es2015"
+  ],
+  "plugins": [
+    [
+      "transform-decorators-legacy"
+    ],
+    [
+      "transform-object-rest-spread"
+    ],
+    [
+      "transform-es2015-destructuring"
+    ],
+    [
+      "babel-plugin-transform-builtin-extend",
+      {
+        "globals": [
+          "Error",
+          "Array"
+        ]
+      }
+    ]
+  ],
+  "env": {
+    "test": {
+      "presets": [
+        [
+          "env",
+          "stage-0",
+          [
+            "es2015",
+            {
+              "modules": false
+            }
+          ]
+        ],
+        "react"
+      ]
+    }
+  },
+  "ignore": "node_modules"
+}

@@ -18,11 +18,12 @@
 </head>
 
 <body>
-Wideo: <input type="checkbox" name="mediaType" id="videoType" checked=""true"></input>
-    Audio: <input type="checkbox" name="mediaType" id="audioType"></input>
+Wideo: <input type="checkbox" name="mediaType" id="videoType" checked="true" />
+    Audio: <input type="checkbox" name="mediaType" id="audioType" />
     <video id="localVideo" muted="true"></video>
     <video id="remoteVideo"></video>
-    <input id="currentUsernameInput" placeholder="username" value="tb" />
+    <input id="currentUsernameInput" placeholder="username" value="tom" />
+    <input id="currentSurnameInput" placeholder="username" value="baj" />
     <input id="currentEmailInput" placeholder="email" value="tb@example.com" />
     <button id="loginButton">Log in</button>
 
@@ -38,6 +39,10 @@ Wideo: <input type="checkbox" name="mediaType" id="videoType" checked=""true"></
     <button id="closeButton" disabled="true">Close session</button>
     <button id="leaveButton" disabled="true">Leave session</button>
     <button id="logoutButton" disabled="true">Logout</button>
+    <hr />
+    <input id="targetUserId" placeholder="target user id" value="4623fe47-a67e-4c64-bc9f-7211285a8b12" />
+    <textarea id="communicationData" placeholder="data to be sent">{"task": "session.create.request", "type": "video"}</textarea>
+    <button id="communicationButton">User communication</button>
 
     Session id: <p id="sessionIdText"></p>
 

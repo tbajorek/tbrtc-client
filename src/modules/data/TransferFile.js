@@ -1,5 +1,6 @@
 import uuidv4 from "uuid/v4";
 import ClassWithEvents from "tbrtc-common/event/ClassWithEvents";
+import readableFileSize from "tbrtc-common/utilities/readableFileSize";
 import ValueChecker from 'tbrtc-common/utilities/ValueChecker';
 import FileInfo from "./FileInfo";
 import FileIsNotLoaded from "../../exceptions/FileIsNotLoaded";
@@ -13,25 +14,25 @@ import ChunkNotExist from "../../exceptions/ChunkNotExist";
 /**
  * Class represents a single transmitted file through WebRTC data channel
  */
-export class File extends ClassWithEvents
+class TransferFile extends ClassWithEvents
 {
     /**
      * Initialization of file
      *
      * @param {object} config Configuration object
-     * @param {HTMLInputElement|null} fileReference Reference to original file input field
+     * @param {File|null} fileReference Reference to original file from input field
      */
+
     constructor(config, fileReference = null) {
         super();
-        ValueChecker.check({ config, _fileReference }, {
-            "info": {
+        ValueChecker.check({ config, fileReference }, {
+            "config": {
                 "required": true,
-                "typeof": 'object',
-                "instanceof": FileInfo
+                "typeof": 'object'
             },
             "fileReference": {
                 "typeof": ['null', 'object'],
-                "instanceof": HTMLInputElement
+                "instanceof": File
             }
         });
         const fileId = uuidv4();
@@ -62,12 +63,14 @@ export class File extends ClassWithEvents
         reader.onload = (event) => {
             chunk = event.target.result;
             this._chunks[this._currentChunk] = chunk;
-            const data = new SentData(this._info, this._chunkNumber, this._currentChunk, chunk);
+            const size = atob(chunk.substr(chunk.indexOf(',') + 1)).length;
+            const data = new SentData(this._info, this._chunkNumber, this._currentChunk, size, chunk);
+            console.log('data', data);
             this.dispatch('chunk.loaded', {
                 data,
             });
             if(this.isNextChunk()) {
-                reader.readAsDataURL(this._getNextChunk());
+                setTimeout(()=>reader.readAsDataURL(this._getNextChunk()), this._config.latency);
             } else {
                 this._completeCreating();
             }
@@ -252,6 +255,17 @@ export class File extends ClassWithEvents
     }
 
     /**
+     * Number of chunks for which should be sliced input file
+     *
+     * @property
+     * @readonly
+     * @type {number}
+     */
+    get chunkNumber() {
+        return this._chunkNumber;
+    }
+
+    /**
      * Flag if the whole file is sent/received
      *
      * @property
@@ -267,10 +281,10 @@ export class File extends ClassWithEvents
      *
      * @property
      * @readonly
-     * @type {boolean}
+     * @type {string}
      */
     get readableSize() {
-        return File.displayedSize(this.info.size);
+        return readableFileSize(this.info.size);
     }
 
     /**
@@ -287,19 +301,6 @@ export class File extends ClassWithEvents
             "file.finished"
         ];
     }
-
-    /**
-     * It calculates the given file size in human-readable way, according to amount of precision numbers
-     *
-     * @param {number} size File size given in bytes
-     * @param {number} precision Amount of precision numbers
-     * @returns {string}
-     */
-    static displayedSize(size, precision = 2) {
-        const base = 1024;
-        const units = ['B', 'kB', 'MB', 'GB', 'TB'];
-        const level = Math.floor(Math.log(size) / Math.log(base));
-        const convertedSize = parseFloat((size / Math.pow(base, level)).toFixed(precision));
-        return `${convertedSize} ${units[level]}`;
-    }
 }
+
+export default TransferFile;

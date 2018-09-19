@@ -1,18 +1,21 @@
 var path = require('path');
 var webpack = require('webpack');
 
-var root = require('app-root-path');
+const root = require('app-root-path');
 
 module.exports = {
+    resolve: {
+        symlinks: true,
+    },
     entry: './src/index.js',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'tbrtc.js'
+        filename: 'tbrtc.js',
     },
     node: {
-        fs: 'empty'
+        fs: 'empty',
     },
-    devServer: { hot: true },
+    devServer: {hot: true},
     module: {
         loaders: [
             {
@@ -27,7 +30,8 @@ module.exports = {
     },
     plugins: [
         new webpack.DefinePlugin({
-            ROOT_DIR: JSON.stringify(root+"/src/locale")
+            __LOCALE_DIR__: JSON.stringify(`${root}/src/locale`),
+            __VERSION__: JSON.stringify('1.0.0'),
         })
 
     ]

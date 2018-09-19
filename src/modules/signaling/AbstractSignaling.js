@@ -3,7 +3,6 @@ import Translation from 'tbrtc-common/translate/Translation';
 import Event from 'tbrtc-common/event/Event';
 import EventContainer from 'tbrtc-common/event/EventContainer';
 import BadParamType from 'tbrtc-common/exceptions/BadParamType';
-import { User as UserModel } from 'tbrtc-common/model/User';
 import { Message } from 'tbrtc-common/messages/Message';
 import { User as UserMessage } from 'tbrtc-common/messages/User';
 import { Session as SessionMessage } from 'tbrtc-common/messages/Session';
@@ -21,7 +20,7 @@ import SessionRequest from "./SessionRequest";
 class AbstractSignaling {
     constructor(config) {
         this._config = config;
-        this._events = EventContainer.instance;
+        this._events = EventContainer.createInstance();
         this.builtInEvents.forEach(eventName => this._events.register(new Event(eventName)));
         this._initialize();
         this._currentUser = null;
@@ -40,7 +39,11 @@ class AbstractSignaling {
 
     sendMessage(message) {
         if(message instanceof Message) {
-            this._send(message.toString());
+            if(this.hasSignalingConnection) {
+                this._send(message.toString());
+            } else {
+                console.warn(Translation.instance._('Signaling message can not be sent because connection is not established'));
+            }
         } else {
             throw new BadParamType('message', 'sendMessage', 'tbrtc-common/messages/Message');
         }
@@ -56,6 +59,14 @@ class AbstractSignaling {
 
     _connect() {
         throw new AbstractClassUsed('modules/signaling/AbstractSignaling');
+    }
+
+    get connectionState() {
+        throw new AbstractClassUsed('modules/signaling/AbstractSignaling');
+    }
+
+    isConnectionState(requested) {
+        return this.connectionState && this.connectionState === requested;
     }
 
     initConnection(user) {
@@ -125,6 +136,10 @@ class AbstractSignaling {
         this.dispatch('sdp.sent', sdp);
     }
 
+    get hasSignalingConnection() {
+        return true;
+    }
+
     /**
      * Produce Message object from JSON data. Event 'message.received' is dispatched.
      *
@@ -134,6 +149,9 @@ class AbstractSignaling {
     _receiveMessage(jsonMessage) {
         const message = MessageFactory.createFromJson(jsonMessage);
         this.dispatch('message.received', { message });
+        if(this._config.debug.recvMessages) {
+            console.log('received message', message);
+        }
         switch (message.type) {
             case 'user.init':
                 this._userInit(message.user);
@@ -171,8 +189,11 @@ class AbstractSignaling {
             case 'chat.message':
                 this._chatMessage(message);
                 break;
+            case 'user.communication':
+                this._userCommunication(message);
+                break;
             case 'success':
-                this._handleSuccess();
+                this._handleSuccess(message);
                 this.dispatch('result.success', { message });
                 break;
             case 'error':
@@ -181,10 +202,13 @@ class AbstractSignaling {
         }
     }
 
-    _handleSuccess() {
+    _handleSuccess(message) {
         switch (this._state) {
             case this.states.CONNECTING:
                 this._state = this.states.CONNECTED;
+                if(!this.currentUser.id && !!message.data.details.user.id) {
+                    this._currentUser.id = message.data.details.user.id;
+                }
                 this.dispatch('user.connected', { user: this._currentUser });
                 break;
             case this.states.DISCONNECTING:
@@ -198,7 +222,6 @@ class AbstractSignaling {
 
     _userInit(sourceUser) {
         this._currentUser.connectionId = sourceUser.connectionId;
-        this._currentUser.id = sourceUser.id;
         this._state = this.states.CONNECTING;
         this.sendMessage(
             new UserMessage('user.connect', this._currentUser)
@@ -277,6 +300,11 @@ class AbstractSignaling {
         this.dispatch('chat.message', { message });
     }
 
+    _userCommunication(message) {
+        const { details, sender } = message;
+        this.dispatch('user.communication', { details, sender });
+    }
+
     _connectionLost() {
         this.dispatch('connection.lost');
     }
@@ -335,6 +363,7 @@ class AbstractSignaling {
             'connection.closed',
             'user.connected',
             'user.disconnected',
+            'user.communication',
             'session.created',
             'session.requested',
             'session.request.stopped',

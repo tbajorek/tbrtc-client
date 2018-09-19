@@ -79,7 +79,8 @@ window.tbRtcClient = new TbRtcClient({
                 ]
             }
         ]
-    }
+    },
+    //autoBindingMedia: false,
     //debug: true
 });
 
@@ -144,93 +145,117 @@ tbRtcClient.isAnyError(error => {
     console.error(error.toString());
 });
 
-tbRtcClient.isInitialized(() => {
+tbRtcClient.isConnected(() => {
+    console.log(tbRtcClient.currentUser);
+    connect();
+});
+tbRtcClient.isNewSession((sessionId) => {
+    closeButton.disabled = false;
+    sessionIdText.innerHTML = sessionId;
+    sessionActive();
+});
+tbRtcClient.isJoined((session) => {
+    sessionIdText.innerHTML = session.id;
+    sessionActive();
+});
+
+tbRtcClient.isNewUser((user) => {
+    console.log('user '+user.name+' joined to this session');
+});
+
+tbRtcClient.isRejectedMe((data) => {
+    console.log('you are rejected by member ' + data.decidedBy.name + ' of the session ' + data.sessionId);
+});
+
+tbRtcClient.isRejected((data) => {
+    cleanRequest();
+});
+
+
+tbRtcClient.isRequest((request) => {
+    newRequest(request.requestMessage.user.name);
+    acceptButton.onclick = (e) => {
+        cleanRequest();
+        request.confirm();
+    };
+    rejectButton.onclick = (e) => {
+        cleanRequest();
+        request.reject();
+    };
+});
+
+tbRtcClient.isRequestStopped(() => {
+    cleanRequest();
+    console.log('request stopped');
+});
+
+tbRtcClient.isNewChatMessage((message) => {
+    chat.innerHTML += '(' + message.date+') '+message.user.name+': '+message.content+'\n';
+});
+
+tbRtcClient.isSessionUnavailable(() => {
+    sessionInactive();
+    sessionIdText.innerHTML = '';
+});
+
+tbRtcClient.isSessionUserLeft(({session, user}) => {
+    console.log('user '+user.name+' left the session');
+});
+
+tbRtcClient.isSessionClosed(() => {
+    console.log('session.closed');
+    closeButton.disabled = true;
+});
+
+tbRtcClient.isDisconnected(() => {
+    console.log('disconnected');
+    disconnect();
+});
+
+tbRtcClient.isP2pStateChange((e) => {
+    console.log('state change', e);
+    disconnect();
+});
+
+tbRtcClient.isFileTransferStart(event => {
+    console.log('file started', event);
+});
+
+tbRtcClient.isFileTransferProgress(event => {
+    //console.log('file updated', event.data.currentChunk);
+    console.log('file updated');
+});
+
+tbRtcClient.isFileReceived(event => {
+    logsText.innerHTML += 'Received file '+event.file.info.name+' ('+event.file.readableSize + ')'+'<br />';
+    console.log('file received', event);
+    event.file.download();
+});
+
+tbRtcClient.isFileSent(event => {
+    logsText.innerHTML += 'Sent file '+event.file.info.name+' ('+event.file.readableSize + ')'+'<br />';
+    console.log('file sent', event);
+});
+
+tbRtcClient.isUserCommunication((data) => {
+    console.log('user communication', data);
+    if(data.details.task === 'session.join.ask') {
+        sessionIdInput.value = data.details.sessionId;
+    }
+});
+tbRtcClient.isInitialized(() => {console.log('initialized');
     initializeFileInput(fileInput);
-    tbRtcClient.isConnected(() => {
-        connect();
-    });
-    tbRtcClient.isNewSession((sessionId) => {
-        closeButton.disabled = false;
-        sessionIdText.innerHTML = sessionId;
-        sessionActive();
-    });
-    tbRtcClient.isJoined((session) => {
-        sessionIdText.innerHTML = session.id;
-        sessionActive();
-    });
 
-    tbRtcClient.isNewUser((user) => {
-        console.log('user '+user.name+' joined to this session');
-    });
-
-    tbRtcClient.isRejectedMe((data) => {
-        console.log('you are rejected by member ' + data.decidedBy.name + ' of the session ' + data.sessionId);
-    });
-
-    tbRtcClient.isRejected((data) => {
-        cleanRequest();
-    });
-
-
-    tbRtcClient.isRequest((request) => {
-        newRequest(request.requestMessage.user.name);
-        acceptButton.onclick = (e) => {
-            cleanRequest();
-            request.confirm();
-        };
-        rejectButton.onclick = (e) => {
-            cleanRequest();
-            request.reject();
-        };
-    });
-
-    tbRtcClient.isRequestStopped(() => {
-        cleanRequest();
-        console.log('request stopped');
-    });
-
-    tbRtcClient.isNewChatMessage((message) => {
-        chat.innerHTML += '(' + message.date+') '+message.user.name+': '+message.content+'\n';
-    });
-
-    tbRtcClient.isSessionUnavailable(() => {
-        sessionInactive();
-        sessionIdText.innerHTML = '';
-    });
-
-    tbRtcClient.isSessionUserLeft(({session, user}) => {
-        console.log('user '+user.name+' left the session');
-    });
-
-    tbRtcClient.isSessionClosed(() => {
-        closeButton.disabled = true;
-    });
-
-    tbRtcClient.isDisconnected(() => {
-        disconnect();
-    });
-
-
-
-    tbRtcClient.isFileTransferStart(event => {
-        console.log('file started', event);
-    });
-
-    tbRtcClient.isFileTransferProgress(event => {
-        console.log('file updated', event.data.currentChunk);
-    });
-
-    tbRtcClient.isFileReceived(event => {
-        logsText.innerHTML += 'Received file '+event.file.info.name+' ('+event.file.readableSize + ') from '+event.sender.name+'<br />';
-        event.file.download();
-    });
 
     /*tbRtcClient.on('MediaProvider', 'success', () => alert('success'));
     tbRtcClient.on('MediaProvider', 'error', () => alert('error'));*/
     loginButton.addEventListener('click', () => {
-        const userModel = new UserModel(null, currentUsernameInput.value, currentEmailInput.value);
+        const userModel = new UserModel(null, currentUsernameInput.value, currentSurnameInput.value, currentEmailInput.value, 'https://avatarmaker.com/svgavatars/temp-avatars/svgA6119304512517854.png');
+        //const userModel = new UserModel('4623fe47-a67e-4c64-bc9f-7211285a8b12', currentUsernameInput.value, currentSurnameInput.value, currentEmailInput.value, 'https://avatarmaker.com/svgavatars/temp-avatars/svgA6119304512517854.png');
         userModel.originalId = uuidv4();
         tbRtcClient.setCurrentUser(userModel);
+        console.log(userModel);
+        console.log(tbRtcClient.currentUser);
         tbRtcClient.start({
             audio: audioType.checked,
             video: videoType.checked,
@@ -264,5 +289,9 @@ tbRtcClient.isInitialized(() => {
 
     logoutButton.addEventListener('click', () => {
         tbRtcClient.disconnect();
+    });
+
+    communicationButton.addEventListener('click', () => {
+        tbRtcClient.sendDataToUser(JSON.parse(communicationData.value), targetUserId.value);
     });
 });

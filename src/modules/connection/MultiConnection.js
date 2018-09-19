@@ -13,7 +13,7 @@ import RemoteUserExists from '../../exceptions/RemoteUserExists';
 import PeerConnection from './PeerConnection';
 import Stream from '../media/Stream';
 import FileInput from "../dom/FileInput";
-import {File as TransferFile} from "../data/File";
+import TransferFile from "../data/TransferFile";
 
 /**
  * This class provides functionality of a connection between multiple users. 
@@ -89,6 +89,9 @@ class MultiConnection extends ClassWithEvents {
         );
         connection.importEvents(this._events);
         connection.dataTransfer.importEvents(this._dataEvents);
+        if(this._localStream) {
+            //connection.addLocalStream(this._localStream);
+        }
         for(const fileInput of Object.values(this._observedFileInputs)) {
             connection.addFileInput(fileInput);
         }
