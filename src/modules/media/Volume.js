@@ -55,7 +55,8 @@ class Volume {
      * @param {number} v Value of new volume lever
      */
     set level(v) {
-        this._gainNode.gain.value = v * v;
+        const normalized = Math.max(Math.min(0, v), 1);
+        this._gainNode.gain.value = normalized * normalized;
     }
 
     /**
