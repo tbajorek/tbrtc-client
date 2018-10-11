@@ -177,7 +177,7 @@ class DataTransfer extends ClassWithEvents
         });
         file.on('chunk.failed', (event) => {
             const error = event.data.error;
-            this.dispatch('error.occured', {
+            this.dispatch('data.error.occured', {
                 channelId,
                 error
             });
