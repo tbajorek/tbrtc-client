@@ -121,7 +121,7 @@ class AbstractSignaling {
         this.sendMessage(
             new IceMessage(this._currentSessionId, remoteUser, ice)
         );
-        this.dispatch('ice.sent', ice);
+        this.dispatch('ice.sent', { ice });
     }
 
     sendSdp(sdp, remoteUser) {
@@ -129,11 +129,11 @@ class AbstractSignaling {
             new SdpMessage(this._currentSessionId, remoteUser, sdp)
         );
         if(sdp.type === Sdp.types.OFFER) {
-            this.dispatch('offer.sent', sdp);
+            this.dispatch('offer.sent', { sdp });
         } else {
-            this.dispatch('answer.sent', sdp);
+            this.dispatch('answer.sent', { sdp });
         }
-        this.dispatch('sdp.sent', sdp);
+        this.dispatch('sdp.sent', { sdp });
     }
 
     get hasSignalingConnection() {
