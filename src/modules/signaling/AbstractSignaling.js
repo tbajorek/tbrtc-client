@@ -211,10 +211,6 @@ class AbstractSignaling {
                 }
                 this.dispatch('user.connected', { user: this._currentUser });
                 break;
-            case this.states.DISCONNECTING:
-                this._state = this.states.DISCONNECTED;
-                this.dispatch('user.disconnected', { user: this._currentUser });
-                break;
             default:
 
         }
