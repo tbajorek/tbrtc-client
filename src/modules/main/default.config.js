@@ -5,10 +5,6 @@ export default {
     remoteVideoContainer: null,
     autoBindingMedia: true,
     locale: 'pl_PL',
-    offerOptions: {
-        offerToReceiveAudio: 1,
-        offerToReceiveVideo: 1
-    },
     mediaConstraints: {
         video: false,
         audio: false,
