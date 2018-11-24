@@ -122,7 +122,7 @@ class DataTransfer extends ClassWithEvents
         });
         const channelId = uuidv4();
         let stats = new DataStats(file.info.size, file.chunkNumber);
-        let channel = this._pc.createDataChannel(channelId, this._config.dataChannel);
+        let channel = this._pc.createDataChannel(channelId);
         ++this._freshChannels;
         let timestamp = 0;
         channel.onopen = () => {
