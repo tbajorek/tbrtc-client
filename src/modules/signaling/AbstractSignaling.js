@@ -13,6 +13,7 @@ import { Sdp } from 'tbrtc-common/model/Sdp';
 import MessageFactory from 'tbrtc-common/factory/MessageFactory';
 import AbstractClassUsed from '../../exceptions/AbstractClassUsed';
 import SessionRequest from "./SessionRequest";
+import moment from "moment";
 
 /**
  * Abstract signaling mechanism. It must be extended by concrete implementation.
@@ -97,7 +98,7 @@ class AbstractSignaling {
             this.dispatch('result.error', { message: Translation.instance._('The message can not be sent because you are not a member of a session') });
         }
         this.sendMessage(
-            new ChatMessage(this.currentSessionId, this._currentUser, content, dateformat(new Date(), "fullDate"))
+            new ChatMessage(this.currentSessionId, this._currentUser, content, moment().format('llll'))
         );
     }
 

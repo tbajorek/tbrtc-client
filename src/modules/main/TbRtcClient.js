@@ -22,6 +22,7 @@ import UserHasSession from '../../exceptions/UserHasSession';
 import MediaRequestIsDone from '../../exceptions/MediaRequestIsDone';
 import FileInput from '../dom/FileInput';
 import PeerConnectionNotInitialized from '../../exceptions/PeerConnectionNotInitialized';
+import moment from 'moment';
 
 class TbRtcClient {
     constructor(userConfig = {}) {
@@ -36,7 +37,10 @@ class TbRtcClient {
         };
         this._instances = {};
         this._config = merge(defaultConfig, userConfig);
-        Translation.instance.setLocale(this._config.locale);
+        if(typeof this._config.locale === 'string') {
+            Translation.instance.setLocale(this._config.locale);
+        }
+        moment.locale(Translation.instance.getLocale().replace('_', '-'));
         this._localVideo = null;
         this._remoteVideo = null;
         this._localStream = null;
