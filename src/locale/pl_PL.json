@@ -40,5 +40,6 @@
     "Signaling connection can not be initialized in its current state: {cstate}": "Połączenie sygnalizacji nie może być zainicjowane w jego obecnym stanie: {cstate}",
     "File {oname} is collected but {cname} has been received": "Plik {oname} jest pobrany ale {cname} został odebrany",
     "Signaling message can not be sent because connection is not established": "Wiadomość sygnalizacyjna nie może zostać wysłana, ponieważ połączenie nie jest ustanowione",
-    "You can not close the session because you are disconnected": "Nie możesz zamknąć sesji, ponieważ jesteś rozłączony"
+    "You can not close the session because you are disconnected": "Nie możesz zamknąć sesji, ponieważ jesteś rozłączony",
+    "Signaling service is not initialized": "Usługa sygnalizacji nie została zainicjalizowana"
 }

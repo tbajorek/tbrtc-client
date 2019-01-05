@@ -187,7 +187,7 @@ class TbRtcClient {
             this._instances.Connection.setRemoteDescription(event.data.sdp, event.data.sdp.sender.id);
         });
         this.on('Connection', 'istate.changed', (event) => {
-            this._baseHandlers.onP2pStateChange({...event.data});
+            this._baseHandlers.onP2pStateChange({ ...event.data });
         });
         // data transfer
         this.on('Connection', 'data.error.occured', (error) => {
@@ -348,10 +348,18 @@ class TbRtcClient {
     }
 
     sendDataToUser(data, userId) {
-        this._instances.Signaling.sendMessage(new Communication(new UserModel(userId, null, null, null), this.currentUser, data));
+        if(typeof this._instances.Signaling !== 'undefined') {
+            this._instances.Signaling.sendMessage(new Communication(new UserModel(userId, null, null, null), this.currentUser, data));
+        } else {
+            this._onAnyError(new AnyError(new Error(Translation.instance._('Signaling service is not initialized')), 'tbrtc-client > main > signaling error'));
+        }
     }
 
     connectToServer() {
+        if(typeof this._instances.Signaling !== 'undefined') {
+            this._onAnyError(new AnyError(new Error(Translation.instance._('Signaling service is not initialized')), 'tbrtc-client > main > signaling error'));
+            return;
+        }
         if (this._instances.Signaling.state === this._instances.Signaling.states.DISCONNECTED) {
             this._instances.Signaling.initConnection(this._currentUser);
         } else {
