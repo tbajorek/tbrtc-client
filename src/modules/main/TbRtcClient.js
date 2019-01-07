@@ -83,7 +83,9 @@ class TbRtcClient {
                 if(!!this._instances.Connection) {
                     const {user} = e.data;
                     this._instances.Connection.addConnection(user);
-                    this._instances.Connection.addLocalStream(this._localStream);
+                    if(this._anyMedia) {
+                        this._instances.Connection.addLocalStream(this._localStream);
+                    }
                 }
             },
             onSessionRejected: (e) => {
@@ -326,11 +328,15 @@ class TbRtcClient {
         this._currentUser = currentUser;
     }
 
-    start(mediaConstraints = null) {
+    updateMediaConstraints(mediaConstraints = null) {
         if (mediaConstraints) {
             this._config = {...this.config, mediaConstraints};
+            this._anyMedia = Object.values(this._config.mediaConstraints).some(constraint => constraint !== false);
         }
-        this._anyMedia = Object.values(this._config.mediaConstraints).some(constraint => constraint !== false);
+    }
+
+    start(mediaConstraints = null) {
+        this.updateMediaConstraints(mediaConstraints);
         if (this._initialized) {
             if (typeof this._instances.Signaling === 'undefined') {
                 this._initSignaling();
@@ -356,7 +362,7 @@ class TbRtcClient {
     }
 
     connectToServer() {
-        if(typeof this._instances.Signaling !== 'undefined') {
+        if(this._instances.Signaling === 'undefined') {
             this._onAnyError(new AnyError(new Error(Translation.instance._('Signaling service is not initialized')), 'tbrtc-client > main > signaling error'));
             return;
         }
