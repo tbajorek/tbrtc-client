@@ -34,16 +34,8 @@
     "test": {
       "presets": [
         [
-          "env",
-          "stage-0",
-          [
-            "es2015",
-            {
-              "modules": false
-            }
-          ]
-        ],
-        "react"
+          "env",{"targets": {"node": "current"}, "modules": false}
+        ]
       ]
     }
   },

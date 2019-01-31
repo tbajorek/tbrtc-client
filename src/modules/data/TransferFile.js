@@ -65,7 +65,6 @@ class TransferFile extends ClassWithEvents
             this._chunks[this._currentChunk] = chunk;
             const size = atob(chunk.substr(chunk.indexOf(',') + 1)).length;
             const data = new SentData(this._info, this._chunkNumber, this._currentChunk, size, chunk);
-            console.log('data', data);
             this.dispatch('chunk.loaded', {
                 data,
             });

@@ -99,7 +99,7 @@ class DataStats {
      *
      * @property
      * @readonly
-     * @type {number}
+     * @type {string}
      */
     get percent() {
         return this._percent;

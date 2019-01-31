@@ -17,16 +17,17 @@ module.exports = {
     },
     devServer: {hot: true},
     module: {
-        loaders: [
+        rules: [
             {
-                test: /.jsx?$/,
-                loader: 'babel-loader',
-                exclude: /node_modules/,
-                query: {
-                    presets: ['env', 'stage-0'],
-                }
-            }
-        ]
+                test: /\.jsx?$/,
+                use: {
+                    loader: 'babel-loader',
+                },
+                include: [
+                    '/node_modules/tbrtc-common',
+                ],
+            },
+        ],
     },
     plugins: [
         new webpack.DefinePlugin({
